@@ -1,6 +1,6 @@
 # petit Constitution
 
-> **Version:** 1.2.0
+> **Version:** 1.2.1
 > **Ratified:** 2026-09-20
 > **Amended:** 2026-09-26
 > **Status:** Active
@@ -102,14 +102,15 @@ show that:
 3. every regex added to a filter file, generalization table, or framer is
    linear-time: character classes and bounded repetition, no nested
    quantifiers, each probed with input shaped to make it backtrack;
-4. normalization never removes what a human wrote: short strings and
-   client-supplied values stay in the fingerprint, so two records that
-   say different things cannot merge and hide one of them. The one
-   exception is an identifier (a bounded, space-free token that
-   `pull_identifiers` recognises), and only when the caller asks for it:
-   it may leave the fingerprint when its value is listed for every
-   record in the group. A record whose identifiers cannot all be listed
-   keeps them in its fingerprint.
+4. normalization touches tokens, never prose. A token (a timestamp,
+   number, address, hash or identifier) is bounded and holds no spaces,
+   so it cannot carry a sentence, and it may leave the fingerprint.
+   Short strings and anything else a human wrote stay in it, so two
+   records that say different things cannot merge and hide one of them.
+   A merge keeps samples and a count, and drops the other token values.
+   Identifiers can be listed instead when the caller asks
+   (`max_identifiers`), and a record whose identifiers cannot all be
+   listed keeps them in its fingerprint.
 
 ## Gourmand
 
