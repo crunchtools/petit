@@ -218,6 +218,8 @@ class TestIdentifiers:
     def test_a_huge_record_is_declined_not_walked(self):
         huge = {"key": "PROJ-1", "rows": list(range(20_000))}
         assert pull_identifiers(huge) == (huge, (), ())
+        wide = {f"k{n}": "PROJ-1" for n in range(20_000)}
+        assert pull_identifiers(wide) == (wide, (), ())
 
     def test_many_records_stay_bounded(self):
         text = json.dumps([{"key": f"PROJ-{n}", "s": "x"} for n in range(50_000)])

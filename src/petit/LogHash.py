@@ -651,6 +651,10 @@ def pull_identifiers(
         visited += 1
         if depth > MAX_JSON_DEPTH or visited > MAX_IDENTIFIER_NODES:
             raise _DeclinedError
+        # Checked before a list or object is sorted or copied, so a huge one
+        # costs nothing to decline.
+        if isinstance(node, (dict, list)) and visited + len(node) > MAX_IDENTIFIER_NODES:
+            raise _DeclinedError
         if isinstance(node, dict):
             return {key: walk(node[key], pointer + "/" + _pointer_token(str(key)), depth + 1)
                     for key in sorted(node)}
@@ -750,21 +754,26 @@ class StructuredHash(SuperHash):
         if document is None or self.max_identifiers <= 0:
             return super().identify(entry)
         masked, fields, values = pull_identifiers(document)
+        if not fields:
+            return self._whole(entry)
         text = canonical(masked)
         key = self.filter.scrub(self.generalize(text))
         listed = self.identifiers.get(key)
         # Keep the record whole, identifiers in its key, when:
-        # - it has none, or its key was cut short and no longer says where
-        #   its <ID>s are;
+        # - its key was cut short and no longer says where its <ID>s are;
         # - a caller's filter folded two shapes into one key, whose rows
         #   must all name the same fields to be read;
         # - the key is full, and masking without listing would delete them.
-        if (not fields or len(text) > self.max_key_chars
+        if (len(text) > self.max_key_chars
                 or (key in self and (listed is None or listed[0] != fields))
                 or (listed is not None and len(listed[1]) >= self.max_identifiers)):
-            whole = super().identify(entry)[0]
-            return (whole + self.UNLISTED if whole in self.identifiers else whole), (), ()
+            return self._whole(entry)
         return key, fields, values
+
+    def _whole(self, entry: LogEntry) -> tuple[str, tuple[str, ...], tuple[str, ...]]:
+        """A record kept whole, out of any key that lists identifiers."""
+        whole = self.key_for(entry)
+        return (whole + self.UNLISTED if whole in self.identifiers else whole), (), ()
 
     def key_for(self, entry: LogEntry) -> str:
         document = getattr(entry, "document", None)

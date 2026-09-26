@@ -813,6 +813,12 @@ class TestIdentifiers:
         assert len(groups) == 2
         assert all(group.identifiers == [] for group in groups)
 
+    def test_collapsing_fingerprints_leaves_listed_groups_alone(self):
+        text = issues(self.KEYS)
+        plain = hash_text(text, framer="json", max_identifiers=1000)
+        assert hash_text(text, framer="json", max_identifiers=1000,
+                         collapse_fingerprints=True) == plain
+
     def test_line_input_lists_identifiers_too(self):
         lines = [json.dumps({"key": key, "summary": "x"}) + "\n" for key in self.KEYS[:10]]
         group = hash_lines(lines, framer="json", max_identifiers=100)[0]
