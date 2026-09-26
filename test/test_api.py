@@ -861,6 +861,11 @@ class TestIdentifiers:
     def test_not_identifiers(self, value):
         assert pull_identifiers({"v": value}) == ({"v": value}, (), ())
 
+    def test_max_fields_is_all_or_nothing(self):
+        record = {"a": "PROJ-1", "b": "PROJ-2", "c": "text"}
+        assert pull_identifiers(record, max_fields=2)[1] == ("/a", "/b")
+        assert pull_identifiers(record, max_fields=1) == (record, (), ())
+
     def test_numbers_are_not_pulled(self):
         assert pull_identifiers({"id": 10234}) == ({"id": 10234}, (), ())
 
