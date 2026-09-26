@@ -34,6 +34,7 @@ as logwatch or swatch cannot do.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import re
 import shutil
@@ -155,6 +156,15 @@ def build_parser() -> argparse.ArgumentParser:
                               "message, per multi-line log message (a stack trace joined "
                               "to the line it belongs to), or one per line. auto, the "
                               "default, tries them in that order")
+
+    parser.add_argument("--identifiers",
+                         dest="identifiers",
+                         type=int,
+                         default=0,
+                         metavar="N",
+                         help="For JSON records, group those that differ only in an "
+                              "identifier (PROJ-1234, a numeric id string, a UUID or SHA) "
+                              "and list up to N of the identifiers under each group")
 
     parser.add_argument("--fingerprint",
                          dest="fingerprint",
@@ -311,6 +321,12 @@ def print_groups(analysis: Analysis, sample: str) -> None:
         )
         text = group.sample_payloads[0] if show_sample else group.pattern
         print(str(group.count) + ":\t" + text)
+        if group.identifiers:
+            listed = ", ".join(" ".join(row) for row in group.identifiers)
+            # A field name is an object key from the input: escape it, as
+            # the pattern already is, so it cannot reach the terminal raw.
+            fields = " ".join(json.dumps(name)[1:-1] for name in group.identifier_fields)
+            print("\t" + fields + ": " + listed)
 
 
 def mode_hash(args: argparse.Namespace, filename: str) -> None:
@@ -322,6 +338,7 @@ def mode_hash(args: argparse.Namespace, filename: str) -> None:
         max_samples=1,
         collapse_fingerprints=args.fingerprint,
         framer=args.framer,
+        max_identifiers=args.identifiers,
     )
     print_groups(analysis, args.sample)
 

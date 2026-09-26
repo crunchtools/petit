@@ -45,9 +45,10 @@ from .errors import (
     ParseError,
     PetitError,
 )
-from .LogHash import FingerprintScore
+from .LogHash import IDENTIFIER, FingerprintScore, pull_identifiers
 
 __all__ = [
+    "IDENTIFIER",
     "Analysis",
     "DataFileError",
     "EmptyLogError",
@@ -60,5 +61,6 @@ __all__ = [
     "detect_format",
     "hash_lines",
     "hash_text",
+    "pull_identifiers",
 ]
 

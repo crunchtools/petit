@@ -82,6 +82,12 @@ class Group:
     # `samples`. A one-line record is (n, n + 1); a JSON object or an email
     # spans more. A group made up by fingerprint collapsing has (-1, -1).
     sample_spans: list[tuple[int, int]] = field(default_factory=list)
+    # Where identifiers were taken out of this group's fingerprint, as JSON
+    # Pointers ("/key"), when `max_identifiers` was set and the records are
+    # JSON. Each row of `identifiers` holds one record's values for those
+    # fields, in input order, one row for every record in the group.
+    identifier_fields: list[str] = field(default_factory=list)
+    identifiers: list[list[str]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -164,6 +170,7 @@ def analyze_text(
     collapse_fingerprints: bool = False,
     framer: str = "auto",
     max_record_chars: int = MAX_KEY_CHARS,
+    max_identifiers: int = 0,
 ) -> Analysis:
     """Group `text` by line fingerprint and report how it was done.
 
@@ -208,6 +215,14 @@ def analyze_text(
         max_record_chars: Longest text a record's fingerprint key is built
             from. Bounds the work stopword rules do on hostile input.
             Samples and raw text are never truncated.
+        max_identifiers: For JSON records, take identifier-shaped strings
+            ("PROJ-1234", "10234", a UUID or SHA) out of the fingerprint and
+            list them in `Group.identifiers`, up to this many per group.
+            Records that differ only in an identifier then group without
+            losing one; a record past the cap keeps its identifiers in its
+            fingerprint instead. 0, the default, leaves them there for every
+            record: each such record is its own group, except that UUIDs are
+            fingerprinted as <UUID> and only a sample of them is kept.
 
     Raises:
         EmptyLogError: `text` contained no data.
@@ -228,6 +243,7 @@ def analyze_text(
         collapse_fingerprints=collapse_fingerprints,
         framer=framer,
         max_record_chars=max_record_chars,
+        max_identifiers=max_identifiers,
     )
 
 
@@ -244,6 +260,7 @@ def analyze_lines(
     collapse_fingerprints: bool = False,
     framer: str = "auto",
     max_record_chars: int = MAX_KEY_CHARS,
+    max_identifiers: int = 0,
 ) -> Analysis:
     """`analyze_text` for input that arrives a line at a time.
 
@@ -272,6 +289,7 @@ def analyze_lines(
         collapse_fingerprints=collapse_fingerprints,
         framer=framer,
         max_record_chars=max_record_chars,
+        max_identifiers=max_identifiers,
     )
 
 
@@ -287,6 +305,7 @@ def _analyze(
     collapse_fingerprints: bool,
     framer: str,
     max_record_chars: int,
+    max_identifiers: int,
 ) -> Analysis:
     if hash_mode != "auto" and hash_mode not in _HASH_MODES:
         raise PetitError("unknown hash mode: " + str(hash_mode))
@@ -296,8 +315,10 @@ def _analyze(
 
     def group(log: LogStream) -> SuperHash:
         if hash_mode == "auto":
-            return SuperHash.manufacture(log, policy, max_record_chars, max_samples)
-        return _HASH_MODES[hash_mode](log, policy, max_record_chars, max_samples)
+            return SuperHash.manufacture(
+                log, policy, max_record_chars, max_samples, max_identifiers)
+        return _HASH_MODES[hash_mode](
+            log, policy, max_record_chars, max_samples, max_identifiers)
 
     hashed = stream.build(group)
     matched = hashed.fingerprint() if collapse_fingerprints else []
@@ -305,6 +326,7 @@ def _analyze(
     groups = []
     for key, value in hashed.items():
         members = value[1][:max_samples]
+        fields, rows = hashed.identifiers.get(key, ((), []))
         groups.append(Group(
             pattern=str(key),
             count=value[0],
@@ -312,6 +334,8 @@ def _analyze(
             sample_lines=[getattr(entry, "line_number", -1) for entry in members],
             sample_payloads=[_payload(entry) for entry in members],
             sample_spans=[entry.span for entry in members],
+            identifier_fields=list(fields),
+            identifiers=[list(row) for row in rows],
         ))
     groups.sort(key=lambda g: (-g.count, g.pattern))
 
@@ -342,6 +366,7 @@ def hash_text(
     collapse_fingerprints: bool = False,
     framer: str = "auto",
     max_record_chars: int = MAX_KEY_CHARS,
+    max_identifiers: int = 0,
 ) -> list[Group]:
     """Group `text` by line fingerprint, most frequent first.
 
@@ -364,6 +389,7 @@ def hash_text(
         collapse_fingerprints=collapse_fingerprints,
         framer=framer,
         max_record_chars=max_record_chars,
+        max_identifiers=max_identifiers,
     ).groups
 
 
@@ -380,6 +406,7 @@ def hash_lines(
     collapse_fingerprints: bool = False,
     framer: str = "auto",
     max_record_chars: int = MAX_KEY_CHARS,
+    max_identifiers: int = 0,
 ) -> list[Group]:
     """The groups half of `analyze_lines`, most frequent first."""
     return analyze_lines(
@@ -394,6 +421,7 @@ def hash_lines(
         collapse_fingerprints=collapse_fingerprints,
         framer=framer,
         max_record_chars=max_record_chars,
+        max_identifiers=max_identifiers,
     ).groups
 
 

@@ -9,6 +9,7 @@ optparse-to-argparse migration.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -100,6 +101,25 @@ def test_output_matches_fixture(test_id: str, flags: list[str], output_file: Pat
     aggressive = "--ygraph" in flags
     assert _normalize_years(result.stdout, aggressive=aggressive) == \
         _normalize_years(output_file.read_text(), aggressive=aggressive)
+
+
+def test_identifiers_are_listed_under_their_group(tmp_path: Path) -> None:
+    records = [{"key": f"PROJ-{n}", "summary": "Nightly build failed"} for n in range(5)]
+    data = tmp_path / "issues.json"
+    data.write_text(json.dumps(records))
+    result = run_petit("--hash", "--nosample", "--identifiers", "10", str(data))
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == ('5:\t{"key":<ID>,"summary":"Nightly build failed"}\n'
+                             "\t/key: PROJ-0, PROJ-1, PROJ-2, PROJ-3, PROJ-4\n")
+
+
+def test_identifier_field_names_are_escaped(tmp_path: Path) -> None:
+    data = tmp_path / "issues.json"
+    data.write_text(json.dumps([{"\x1b[2Jk": f"PROJ-{n}"} for n in range(3)]))
+    result = run_petit("--hash", "--nosample", "--identifiers", "10", str(data))
+    assert result.returncode == 0, result.stderr
+    assert "\x1b" not in result.stdout
+    assert "/\\u001b[2Jk: PROJ-0, PROJ-1, PROJ-2" in result.stdout
 
 
 def test_help_exits_0() -> None:

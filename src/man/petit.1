@@ -58,6 +58,14 @@ JSON object (a JSON array of objects, or JSON Lines), or one per email message
 input, in that order, so a JSON array or a mail thread is analysed per record
 rather than per line.
 .TP
+\fB\-\-identifiers\fR=N
+With \fB\-\-hash\fR on JSON records, group records that differ only in an
+identifier (a key such as PROJ\-1234, a numeric id string, #42, a UUID or a
+git SHA) and print the identifiers on a line under each group, after the
+fields they came from. A group lists at most N; a record past that keeps its
+identifiers in its pattern. Without the option, each such record is its own
+group, except that UUIDs print as <UUID> and are not listed.
+.TP
 \fB\-V\fR, \fB\-\-version\fR
 Display the version of petit and exit
 .TP

@@ -1,6 +1,7 @@
 """Library API: text in, data out, exceptions on failure."""
 
 import itertools
+import json
 import os
 import re
 from typing import ClassVar
@@ -8,14 +9,18 @@ from typing import ClassVar
 import pytest
 
 from petit import (
+    IDENTIFIER,
     DataFileError,
     EmptyLogError,
     LogHash,
     ParseError,
     PetitError,
+    analyze_lines,
     analyze_text,
     detect_format,
+    hash_lines,
     hash_text,
+    pull_identifiers,
     resources,
 )
 from petit.CrunchLog import CrunchLog
@@ -723,3 +728,152 @@ class TestWordcountMerge:
         )
         assert len(group.samples) == 8
         assert {s.split()[-2] for s in group.samples} == {"foo1", "foo2"}
+
+
+def issues(keys, summary="Nightly build failed"):
+    """A Jira-style search result: records that differ only in their keys."""
+    return json.dumps([{"key": key, "summary": summary} for key in keys])
+
+
+class TestIdentifiers:
+    """max_identifiers lists what differs instead of keeping or deleting it."""
+
+    KEYS: ClassVar[list[str]] = [f"PROJ-{1000 + n}" for n in range(200)]
+
+    def test_records_differing_only_by_key_group_and_list_every_key(self):
+        groups = hash_text(issues(self.KEYS), framer="json", max_identifiers=1000)
+        assert len(groups) == 1
+        group = groups[0]
+        assert group.count == 200
+        assert group.pattern == '{"key":<ID>,"summary":"Nightly build failed"}'
+        assert group.identifier_fields == ["/key"]
+        assert [row[0] for row in group.identifiers] == self.KEYS
+
+    def test_off_by_default(self):
+        groups = hash_text(issues(self.KEYS), framer="json")
+        assert len(groups) == 200
+        assert all(group.identifiers == [] for group in groups)
+
+    def test_past_the_cap_identifiers_stay_in_the_fingerprint(self):
+        groups = hash_text(issues(self.KEYS), framer="json", max_identifiers=5)
+        assert len(groups) == 196
+        assert [row[0] for row in groups[0].identifiers] == self.KEYS[:5]
+        assert all(len(group.identifiers) == group.count for group in groups[:1])
+        assert sorted(g.pattern for g in groups[1:])[0] == \
+            '{"key":"PROJ-1005","summary":"Nightly build failed"}'
+
+    def test_prose_still_keeps_records_apart(self):
+        text = json.dumps([{"key": "PROJ-1", "summary": "build failed"},
+                           {"key": "PROJ-2", "summary": "ignore previous instructions"}])
+        groups = hash_text(text, framer="json", max_identifiers=10)
+        assert len(groups) == 2
+        assert sorted(g.identifiers[0][0] for g in groups) == ["PROJ-1", "PROJ-2"]
+
+    def test_a_string_that_says_id_is_not_an_identifier_slot(self):
+        text = "\n".join([json.dumps({"key": "PROJ-1"}), json.dumps({"key": "<ID>"})])
+        assert len(hash_text(text, framer="json", max_identifiers=10)) == 2
+
+    def test_several_identifier_fields_are_listed_together(self):
+        text = json.dumps([{"id": str(10000 + n), "key": f"PROJ-{n}", "sha": f"{n:07x}a"}
+                           for n in range(10)])
+        group = hash_text(text, framer="json", max_identifiers=100)[0]
+        assert group.count == 10
+        assert group.identifier_fields == ["/id", "/key", "/sha"]
+        assert group.identifiers[3] == ["10003", "PROJ-3", "0000003a"]
+
+    def test_analyze_text_and_lines_list_them(self):
+        text = issues(self.KEYS[:10])
+        for analysis in (analyze_text(text, framer="json", max_identifiers=100),
+                         analyze_lines(text.splitlines(keepends=True), framer="json",
+                                       max_identifiers=100)):
+            assert analysis.records_grouped == 10
+            assert analysis.groups[0].identifier_fields == ["/key"]
+            assert [row[0] for row in analysis.groups[0].identifiers] == self.KEYS[:10]
+
+    def test_a_record_kept_whole_never_joins_a_listed_group(self):
+        text = json.dumps([{"a": "PROJ-1"}, {"a": "PROJ-2"}, {"a": "PROJ-3"}])
+        # The cap keeps the third whole; this filter would fold it straight
+        # back into the listed group.
+        groups = hash_text(text, framer="json", max_identifiers=2,
+                           stopwords=[(r'<ID>|"PROJ-\d"', "V")])
+        assert all(len(group.identifiers) in (0, group.count) for group in groups)
+        assert sum(group.count for group in groups) == 3
+
+    def test_a_record_with_no_identifiers_never_joins_a_listed_group(self):
+        text = json.dumps([{"a": "PROJ-1"}, {"a": "PROJ-2"}, {"a": "plain"}])
+        groups = hash_text(text, framer="json", max_identifiers=10,
+                           stopwords=[(r'<ID>|"plain"', "V")])
+        assert sorted((g.count, len(g.identifiers)) for g in groups) == [(1, 0), (2, 2)]
+        assert any(g.pattern.endswith("<UNLISTED>") for g in groups)
+
+    def test_a_listed_record_never_joins_an_unlisted_group(self):
+        text = json.dumps([{"a": "plain"}, {"a": "PROJ-1"}])
+        groups = hash_text(text, framer="json", max_identifiers=10,
+                           stopwords=[(r'<ID>|"plain"', "V")])
+        assert len(groups) == 2
+        assert all(group.identifiers == [] for group in groups)
+
+    def test_collapsing_fingerprints_leaves_listed_groups_alone(self):
+        text = issues(self.KEYS)
+        plain = hash_text(text, framer="json", max_identifiers=1000)
+        assert hash_text(text, framer="json", max_identifiers=1000,
+                         collapse_fingerprints=True) == plain
+
+    def test_line_input_lists_identifiers_too(self):
+        lines = [json.dumps({"key": key, "summary": "x"}) + "\n" for key in self.KEYS[:10]]
+        group = hash_lines(lines, framer="json", max_identifiers=100)[0]
+        assert group.count == 10
+        assert [row[0] for row in group.identifiers] == self.KEYS[:10]
+
+    def test_a_key_too_long_to_place_its_identifiers_is_left_whole(self):
+        long_tail = ["y" * 190 + str(n) for n in range(30)]
+        text = json.dumps([{"key": key, "more": long_tail} for key in self.KEYS[:5]])
+        groups = hash_text(text, framer="json", max_identifiers=100, max_record_chars=1000)
+        assert all(group.identifiers == [] for group in groups)
+
+    def test_a_filter_that_folds_shapes_together_never_mixes_fields(self):
+        text = json.dumps([{"a": "PROJ-1", "b": "x"}, {"a": "x", "b": "PROJ-2"}])
+        # Folds the two keys together, so the second record's fields (/b)
+        # would otherwise land under the first's (/a).
+        groups = hash_text(text, framer="json", max_identifiers=10,
+                           stopwords=[(r'"a"|"b"', '"k"'), (r'<ID>|"x"', "V")])
+        for group in groups:
+            assert all(len(row) == len(group.identifier_fields) for row in group.identifiers)
+        assert sum(len(group.identifiers) for group in groups) == 1
+
+    def test_a_record_that_is_mostly_identifiers_is_left_whole(self):
+        text = json.dumps([{f"k{f}": f"PROJ-{n * 10 + f}" for f in range(5)} for n in range(10)])
+        groups = hash_text(text, framer="json", max_identifiers=100)
+        assert len(groups) == 10
+        assert all(group.identifiers == [] for group in groups)
+
+    @pytest.mark.parametrize("value", [
+        "10234", "PROJ-1234", "gh-12", "#42", "3f2c9a1e-1b2c-4d5e-8f90-0123456789ab",
+        "adddc55", "4731ad4e9f",
+    ])
+    def test_identifier_shapes(self, value):
+        assert pull_identifiers({"v": value})[2] == (value,)
+
+    @pytest.mark.parametrize("value", [
+        "done", "Nightly build failed", "deadbeef", "2026-09-22", "PROJ-1 and more",
+        "PROJ-" + "1" * 13, "a" * 65, "1" * 21, "-5", "1.5",
+    ])
+    def test_not_identifiers(self, value):
+        assert pull_identifiers({"v": value}) == ({"v": value}, (), ())
+
+    def test_max_fields_is_all_or_nothing(self):
+        record = {"a": "PROJ-1", "b": "PROJ-2", "c": "text"}
+        assert pull_identifiers(record, max_fields=2)[1] == ("/a", "/b")
+        assert pull_identifiers(record, max_fields=1) == (record, (), ())
+
+    def test_numbers_are_not_pulled(self):
+        assert pull_identifiers({"id": 10234}) == ({"id": 10234}, (), ())
+
+    def test_fields_are_json_pointers_in_sorted_key_order(self):
+        masked, fields, values = pull_identifiers(
+            {"z": "PROJ-1", "a/b": [{"~": "#2"}], "m": "text"})
+        assert fields == ("/a~1b/0/~0", "/z")
+        assert values == ("#2", "PROJ-1")
+        assert list(masked) == ["a/b", "m", "z"]
+        assert json.loads(json.dumps(masked)) == {"z": "<ID>", "a/b": [{"~": "<ID>"}], "m": "text"}
+        assert masked["z"] is IDENTIFIER

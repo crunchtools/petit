@@ -7,7 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.10.0] - 2026-09-26
+
 ### Added
+- `max_identifiers` on `analyze_text`, `analyze_lines`, `hash_text` and
+  `hash_lines`. For JSON records, identifier-shaped strings (`PROJ-1234`,
+  `"10234"`, `#42`, a UUID or a git SHA) leave the fingerprint as `<ID>`
+  and are listed in the new `Group.identifier_fields` (JSON Pointers) and
+  `Group.identifiers` (one row per record, up to that many per group; a
+  record past that keeps its identifiers in its fingerprint). 200 Jira
+  issues that differ only in their keys used to be 200 groups; they are now
+  one, with all 200 keys. Off by default. A record with more than four
+  identifier fields keeps them in its fingerprint, so a list never becomes
+  most of what it replaced. For mcp-trentina#173.
+- `petit --hash --identifiers N` does the same from the command line,
+  printing the identifiers on a line under each group.
+- `pull_identifiers()` and `IDENTIFIER`, the same step on a single JSON
+  value, for callers that fingerprint JSON themselves.
 - The Fingerprints workflow archives every capture to the public
   [crunchtools/petit-captures](https://github.com/crunchtools/petit-captures)
   repo, under `<date>/<run>/<release>/`. That includes the whole journal of both boots, scrubbed and

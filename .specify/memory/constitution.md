@@ -1,8 +1,8 @@
 # petit Constitution
 
-> **Version:** 1.1.2
+> **Version:** 1.2.0
 > **Ratified:** 2026-09-20
-> **Amended:** 2026-09-23
+> **Amended:** 2026-09-26
 > **Status:** Active
 > **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.17.0
 > **Profile:** CLI Tool
@@ -104,7 +104,12 @@ show that:
    quantifiers, each probed with input shaped to make it backtrack;
 4. normalization never removes what a human wrote: short strings and
    client-supplied values stay in the fingerprint, so two records that
-   say different things cannot merge and hide one of them.
+   say different things cannot merge and hide one of them. The one
+   exception is an identifier (a bounded, space-free token that
+   `pull_identifiers` recognises), and only when the caller asks for it:
+   it may leave the fingerprint when its value is listed for every
+   record in the group. A record whose identifiers cannot all be listed
+   keeps them in its fingerprint.
 
 ## Gourmand
 
