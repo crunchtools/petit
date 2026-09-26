@@ -17,6 +17,7 @@ import pytest
 from petit import PetitError, analyze_text, pull_identifiers
 from petit import records as framing
 from petit.CrunchLog import CrunchLog, RSyslogEntry, StructuredEntry, SyslogEntry
+from petit.LogHash import MAX_IDENTIFIER_NODES
 
 BUDGET_SECONDS = 5.0
 
@@ -220,6 +221,21 @@ class TestIdentifiers:
         assert pull_identifiers(huge) == (huge, (), ())
         wide = {f"k{n}": "PROJ-1" for n in range(20_000)}
         assert pull_identifiers(wide) == (wide, (), ())
+
+    def test_depth_limit_boundary(self):
+        def nest(levels: int) -> object:
+            value: object = "PROJ-1"
+            for _ in range(levels):
+                value = [value]
+            return value
+        assert pull_identifiers(nest(framing.MAX_JSON_DEPTH))[2] == ("PROJ-1",)
+        assert pull_identifiers(nest(framing.MAX_JSON_DEPTH + 1))[2] == ()
+
+    def test_node_budget_boundary(self):
+        fits = {"key": "PROJ-1", **{f"k{n}": n for n in range(MAX_IDENTIFIER_NODES - 2)}}
+        assert pull_identifiers(fits)[2] == ("PROJ-1",)
+        over = {**fits, "one_more": 0}
+        assert pull_identifiers(over)[2] == ()
 
     def test_many_records_stay_bounded(self):
         text = json.dumps([{"key": f"PROJ-{n}", "s": "x"} for n in range(50_000)])
