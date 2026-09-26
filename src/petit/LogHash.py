@@ -48,6 +48,7 @@ from .CrunchLog import (
 )
 from .errors import DataFileError, PetitError
 from .Filter import Filter
+from .records import MAX_JSON_DEPTH
 from .resources import search_prefixes
 
 # Longest text a fingerprint key is built from. Every stopword regex runs
@@ -166,6 +167,13 @@ class SuperHash(UserDict[str, list[Any]]):
     Alongside, each key tallies the input records it grouped and the source
     lines they covered, so `records_grouped` and `lines_grouped` stay exact
     when the members are not all kept.
+
+    `max_identifiers` above 0 lets a driver that knows where identifiers sit
+    (StructuredHash) take them out of the key and list them instead: records
+    that differ only in an identifier group together, and every identifier
+    is kept, up to that many rows per key. A record that would go past that
+    keeps its identifiers in its key instead, so none is ever dropped.
+    0 leaves them in the key.
     """
 
     filter = Filter()
@@ -190,12 +198,16 @@ class SuperHash(UserDict[str, list[Any]]):
         filter_filename: str | Filter | None = None,
         max_key_chars: int = MAX_KEY_CHARS,
         max_samples: int | None = None,
+        max_identifiers: int = 0,
     ) -> None:
 
         # Call parent init
         UserDict.__init__(self)
         self.max_key_chars = max_key_chars
         self.max_samples = max_samples
+        self.max_identifiers = max_identifiers
+        # key -> (identifier fields, one row of their values per record).
+        self.identifiers: dict[str, tuple[tuple[str, ...], list[tuple[str, ...]]]] = {}
         # key -> [records, lines] grouped under it; see account().
         self.grouped: dict[str, list[int]] = {}
         # How each corpus fared the last time fingerprint() ran.
@@ -230,12 +242,22 @@ class SuperHash(UserDict[str, list[Any]]):
         text = " ".join(getattr(entry, name) for name in self.KEY_FIELDS)
         return self.filter.scrub(self.generalize(text[:self.max_key_chars]))
 
+    def identify(self, entry: LogEntry) -> tuple[str, tuple[str, ...], tuple[str, ...]]:
+        """An entry's key, and the identifier fields and values taken out of it.
+
+        Nothing is taken out here: only a driver that can tell an identifier
+        from a message overrides this.
+        """
+        return self.key_for(entry), (), ()
+
     def fill(self, log: Iterable[LogEntry]) -> None:
         """Group every entry under its fingerprint."""
         for entry in log:
-            key = self.key_for(entry)
+            key, fields, values = self.identify(entry)
             self.increment(key, entry)
             self.account(key, entry)
+            if fields:
+                self.identifiers.setdefault(key, (fields, []))[1].append(values)
 
         # An entry that scrubs away to nothing carries no information
         self.pop("#", None)
@@ -271,6 +293,7 @@ class SuperHash(UserDict[str, list[Any]]):
     def __delitem__(self, key: str) -> None:
         super().__delitem__(key)
         self.grouped.pop(key, None)
+        self.identifiers.pop(key, None)
 
     @property
     def records_grouped(self) -> int:
@@ -411,6 +434,7 @@ class SuperHash(UserDict[str, list[Any]]):
         filter: str | Filter | None = None,
         max_key_chars: int = MAX_KEY_CHARS,
         max_samples: int | None = None,
+        max_identifiers: int = 0,
     ) -> SuperHash:
         """The hash driver for whatever entry driver parsed `log`."""
         entry_type = getattr(log, "Entry", None)
@@ -418,7 +442,7 @@ class SuperHash(UserDict[str, list[Any]]):
             if not isinstance(log, CrunchLog) or len(log) < 1:
                 raise PetitError("could not determine what type of objects the log contains")
             entry_type = type(log[-1])
-        return hash_for(entry_type)(log, filter, max_key_chars, max_samples)
+        return hash_for(entry_type)(log, filter, max_key_chars, max_samples, max_identifiers)
 
 
 class SyslogHash(SuperHash):
@@ -544,11 +568,117 @@ _UUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}
 # Strings up to this length are kept verbatim in a structured fingerprint.
 MAX_VERBATIM_STRING = 200
 
+# What an identifier looks like: a numeric string ("10234"), a key
+# ("PROJ-1234"), a reference ("#42"), a UUID, or a lowercase hex digest with
+# both digits and letters in it (a git SHA). No alternative admits a space,
+# so no sentence fits in one. Every repetition is bounded.
+_IDENTIFIER = re.compile(
+    r"\d{1,20}"
+    r"|[A-Za-z][A-Za-z0-9_]{0,31}-\d{1,12}"
+    r"|#\d{1,12}"
+    r"|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+    r"|(?=[0-9a-f]{0,63}[0-9])(?=[0-9a-f]{0,63}[a-f])[0-9a-f]{7,64}"
+)
+MAX_IDENTIFIER_CHARS = 64
+
+# A record with more identifier fields than this keeps them all in its
+# fingerprint. Listing them would make the list the bulk of the record.
+MAX_IDENTIFIER_FIELDS = 4
+
+# pull_identifiers visits at most this many values in one record, keys and
+# array members counted. A record bigger than that is not a list entry
+# worth masking, and walking it would be work an attacker chose.
+MAX_IDENTIFIER_NODES = 10_000
+
+
+class Identifier(str):
+    """Stands where an identifier was pulled out of a structured value.
+
+    A str, so a masked value still serializes as JSON (as "<ID>"). canonical()
+    knows it by its exact type and writes a bare <ID>, which no JSON string
+    can produce, so a record that really says "<ID>" never shares its key.
+    """
+
+
+IDENTIFIER = Identifier("<ID>")
+
+
+class _DeclinedError(Exception):
+    """A value that pull_identifiers leaves as it is."""
+
+
+def _pointer_token(key: str) -> str:
+    return key.replace("~", "~0").replace("/", "~1")
+
+
+def pull_identifiers(
+    value: Any, max_fields: int = MAX_IDENTIFIER_FIELDS,
+) -> tuple[Any, tuple[str, ...], tuple[str, ...]]:
+    """Take the identifier-shaped strings out of a JSON value.
+
+    Returns (masked, fields, values). `masked` is a copy of `value` with each
+    identifier-shaped string replaced by IDENTIFIER; `fields` are where they
+    were, as RFC 6901 JSON Pointers, and `values` what they were. Objects are
+    walked in sorted key order, and their copies come out in that order, so
+    two records with the same shape list their fields in the same order
+    whatever order their keys came in.
+
+    Fingerprint `masked` and records that differ only in an identifier share
+    a fingerprint; keep `values` and none of those identifiers is lost.
+    Group by the fields as well as the fingerprint when the fingerprint is
+    not canonical()'s, which marks the masked slots itself.
+
+    Only strings qualify: numbers are the caller's to normalise or not. A
+    value with no identifier, more than `max_fields` of them, more than
+    MAX_IDENTIFIER_NODES values, or nesting past MAX_JSON_DEPTH comes back
+    as it is, with no fields.
+
+    Args:
+        value: A value as json.loads returns it. It is not modified.
+        max_fields: Most identifiers a value may have and still be masked.
+
+    Returns:
+        (masked, fields, values): the masked copy, or `value` itself when
+        nothing was taken out; a JSON Pointer per identifier; and the
+        identifiers, parallel to `fields`.
+    """
+    fields: list[str] = []
+    values: list[str] = []
+    visited = 0
+
+    def walk(node: Any, pointer: str, depth: int) -> Any:
+        nonlocal visited
+        visited += 1
+        if depth > MAX_JSON_DEPTH or visited > MAX_IDENTIFIER_NODES:
+            raise _DeclinedError
+        if isinstance(node, dict):
+            return {key: walk(node[key], pointer + "/" + _pointer_token(str(key)), depth + 1)
+                    for key in sorted(node)}
+        if isinstance(node, list):
+            return [walk(item, f"{pointer}/{idx}", depth + 1) for idx, item in enumerate(node)]
+        if type(node) is str and len(node) <= MAX_IDENTIFIER_CHARS \
+                and _IDENTIFIER.fullmatch(node):
+            if len(fields) >= max_fields:
+                raise _DeclinedError
+            fields.append(pointer)
+            values.append(node)
+            return IDENTIFIER
+        return node
+
+    try:
+        masked = walk(value, "", 0)
+    except _DeclinedError:
+        return value, (), ()
+    if not fields:
+        return value, (), ()
+    return masked, tuple(fields), tuple(values)
+
 
 def canonical(value: Any) -> str:
     """A structured value's fingerprint: keys verbatim, values by type.
 
-    Numbers, booleans and nulls become <N>, <B> and <NULL>; timestamp- and
+    Numbers, booleans and nulls become <N>, <B> and <NULL>, and an
+    Identifier left by pull_identifiers becomes <ID>; timestamp- and
     UUID-shaped strings become <TS> and <UUID>; a string over 200 characters
     becomes <STR:n>, n its length rounded up to a power of two. Every other
     string is kept exactly. That is where prose lives, and so where an
@@ -576,7 +706,9 @@ def canonical(value: Any) -> str:
 
 # Scalars fingerprinted by type alone. Looked up by exact type, so a bool
 # is never taken for the int it subclasses.
-_SCALAR_TOKENS: dict[type, str] = {bool: "<B>", type(None): "<NULL>", int: "<N>", float: "<N>"}
+_SCALAR_TOKENS: dict[type, str] = {
+    bool: "<B>", type(None): "<NULL>", int: "<N>", float: "<N>", Identifier: "<ID>",
+}
 
 # Strings shaped like a parameter, whatever they say.
 _STRING_SHAPES = [(_ISO_TIMESTAMP, "<TS>"), (_UUID, "<UUID>")]
@@ -601,9 +733,38 @@ class StructuredHash(SuperHash):
 
     The type-based rules are complete on their own. hash.stopwords on top
     would mangle key names, so the default filter is none at all.
+
+    With `max_identifiers` set, identifier-shaped strings (see
+    pull_identifiers) become <ID> in the key and are listed per group, so
+    records that differ only in their keys or IDs group without losing one.
     """
 
     DEFAULT_FILTER: ClassVar[str] = "__none__"
+
+    # Marks a record kept whole whose key a caller's filter folded into a
+    # key that lists identifiers, which must then list every record it holds.
+    UNLISTED: ClassVar[str] = " <UNLISTED>"
+
+    def identify(self, entry: LogEntry) -> tuple[str, tuple[str, ...], tuple[str, ...]]:
+        document = getattr(entry, "document", None)
+        if document is None or self.max_identifiers <= 0:
+            return super().identify(entry)
+        masked, fields, values = pull_identifiers(document)
+        text = canonical(masked)
+        key = self.filter.scrub(self.generalize(text))
+        listed = self.identifiers.get(key)
+        # Keep the record whole, identifiers in its key, when:
+        # - it has none, or its key was cut short and no longer says where
+        #   its <ID>s are;
+        # - a caller's filter folded two shapes into one key, whose rows
+        #   must all name the same fields to be read;
+        # - the key is full, and masking without listing would delete them.
+        if (not fields or len(text) > self.max_key_chars
+                or (key in self and (listed is None or listed[0] != fields))
+                or (listed is not None and len(listed[1]) >= self.max_identifiers)):
+            whole = super().identify(entry)[0]
+            return (whole + self.UNLISTED if whole in self.identifiers else whole), (), ()
+        return key, fields, values
 
     def key_for(self, entry: LogEntry) -> str:
         document = getattr(entry, "document", None)

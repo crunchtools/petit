@@ -70,6 +70,15 @@ source lines (see "How petit reads a log"). Normalization is chosen by the drive
 unless you pass filter_name or stopwords. docs/drivers.md explains how
 drivers decide what to collapse.
 
+JSON records that differ only in an identifier (a "PROJ-1234" key, a numeric
+id string, a SHA) are each their own group, because an identifier is kept
+verbatim; UUIDs group as <UUID>, and all but the samples are lost. Pass
+max_identifiers=N and all of them group with the identifiers listed:
+Group.identifier_fields names where they were, as JSON Pointers, and
+Group.identifiers holds one row of values per record, up to N. A record past
+N keeps its identifiers in its fingerprint, so none is dropped. pull_identifiers() does the same to one JSON value, for a
+caller that fingerprints JSON its own way.
+
 Text goes in, data comes out. Nothing here reads a file, writes to stdout, or
 exits the process — failures raise PetitError subclasses (EmptyLogError,
 ParseError, DataFileError) for the caller to handle.
@@ -81,8 +90,8 @@ Petit follows Semantic Versioning. Two things are public and covered by it:
 
   * the petit command line, its options and its output
   * the names exported from the petit package: analyze_text, analyze_lines,
-    hash_text, hash_lines, detect_format, Analysis, Group, and the
-    PetitError hierarchy
+    hash_text, hash_lines, detect_format, pull_identifiers, IDENTIFIER,
+    Analysis, Group, and the PetitError hierarchy
 
 Everything else is internal. The driver classes in petit.CrunchLog and
 the hash classes in petit.LogHash may change in any release; they are
