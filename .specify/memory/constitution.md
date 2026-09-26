@@ -107,10 +107,10 @@ show that:
    so it cannot carry a sentence, and it may leave the fingerprint.
    Short strings and anything else a human wrote stay in it, so two
    records that say different things cannot merge and hide one of them.
-   A merge keeps samples and a count, and drops the other token values;
-   when the caller asks (`max_identifiers`), petit lists them instead,
-   and a record whose values cannot all be listed keeps them in its
-   fingerprint.
+   A merge keeps samples and a count, and drops the other token values.
+   Identifiers can be listed instead when the caller asks
+   (`max_identifiers`), and a record whose identifiers cannot all be
+   listed keeps them in its fingerprint.
 
 ## Gourmand
 
