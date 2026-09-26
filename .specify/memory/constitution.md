@@ -1,6 +1,6 @@
 # petit Constitution
 
-> **Version:** 1.2.1
+> **Version:** 1.3.0
 > **Ratified:** 2026-09-20
 > **Amended:** 2026-09-26
 > **Status:** Active
@@ -19,9 +19,31 @@ AGPL-3.0-or-later.
 ## Versioning
 
 Semantic Versioning 2.0.0. MAJOR for changes to the CLI flag set, exit code
-contract, or library API (`petit.api`); MINOR for new flags, new library
-functions, or new supported log formats; PATCH for bug fixes and internal
-refactors with no observable behavior change.
+contract, or library API (`petit.api` and the names exported from
+`petit`); MINOR for new
+flags, new library functions, or new supported log formats; PATCH for bug
+fixes and internal refactors with no observable behavior change.
+
+## Amendments
+
+This file holds the rules in force. Gatehouse reviews every PR against the
+base branch's copy, so a PR cannot write the rules it is judged by.
+
+A PR that changes this file is an amendment, and lands on its own: it
+changes this file and nothing else. Code that relies on an amendment follows
+in a later PR, reviewed against the amended text. Review an amendment for:
+
+1. a version bump (MAJOR removes or loosens a rule, MINOR adds or tightens
+   one, PATCH rewords without changing what is required). `Amended` is
+   the day it merges, so an amendment made on the same day as the last
+   one leaves that line as it is;
+2. a rationale in the PR description;
+3. new text that is clear and agrees with itself and with the code on the
+   base branch.
+
+An amendment that changes or removes a rule is not a violation of that rule.
+Changing the rules is what an amendment is for, and maintainer approval of
+the PR is the check on it.
 
 ## PyPI Naming Exception
 
@@ -40,11 +62,11 @@ Section VIII's PyPI-name-matches-tool-name convention, not an oversight.
 
 Built with `argparse`. Flags: `-v/--verbose`, `--sample`/`--nosample`/
 `--allsample`, `--filter`/`--nofilter`, `--wide`, `--tick`, `--fingerprint`,
-`--framer {auto,line,json,message}`,
+`--framer {auto,json,message,multiline,line}`, `--identifiers N`, `--span`,
 `-V/--version`, and one mode flag per report: `--hash`, `--wordcount`,
 `--daemon`, `--host`, `--sgraph`, `--mgraph`, `--hgraph`, `--dgraph`,
-`--mograph`, `--ygraph`. One optional positional `file`; reads stdin when
-omitted. Running `petit` with no flags at all prints the version.
+`--mograph`, `--ygraph`, `--graph`. One optional positional `file`; reads
+stdin when omitted. Running `petit` with no flags at all prints the version.
 
 Exit codes: `0` on success, `1` on a `PetitError` (bad input — unreadable
 file, unparseable log, unknown driver name), `2` on a usage error (argparse
@@ -58,9 +80,11 @@ makes no network calls and needs no credentials, so the
 
 ## Library API
 
-`petit.api` (`hash_text`, `analyze_text`, `detect_format`, `Group`,
-`Analysis`, and the `PetitError` hierarchy) is a supported embedding surface
-independent of the CLI — see `petit/api.py`'s module docstring.
+`petit.api` and the names exported from `petit` (`analyze_text`,
+`analyze_lines`, `hash_text`, `hash_lines`, `detect_format`,
+`pull_identifiers`, `IDENTIFIER`, `Analysis`, `Group`, `FingerprintScore`,
+and the `PetitError` hierarchy) are a supported embedding surface
+independent of the CLI. See `petit/api.py`'s module docstring.
 
 The CLI is a thin shell over `petit.api`. Every capability the CLI has is
 reachable from the library with the same defaults, and the byte-for-byte
@@ -97,11 +121,11 @@ show that:
    library;
 2. work is bounded: deep nesting, oversized records, and pathological
    strings complete within a fixed time budget, and size and depth limits
-   refuse by declining (a framer's `claims()` returns False), never by
-   raising;
-3. every regex added to a filter file, generalization table, or framer is
-   linear-time: character classes and bounded repetition, no nested
-   quantifiers, each probed with input shaped to make it backtrack;
+   refuse by declining (a framer's `claims()` returns False,
+   `pull_identifiers` returns its input unchanged), never by raising;
+3. every regex that reads input, whether in a filter file, generalization
+   table, framer or driver, is linear-time: character classes and bounded
+   repetition, no nested quantifiers, each probed with input shaped to make it backtrack;
 4. normalization touches tokens, never prose. A token (a timestamp,
    number, address, hash or identifier) is bounded and holds no spaces,
    so it cannot carry a sentence, and it may leave the fingerprint.
@@ -124,3 +148,6 @@ Zero violations required. Config in `gourmand.toml`, exceptions in
 3. Tests — `uv run pytest -v`
 4. Gourmand — `gourmand check --full .`, run from `quay.io/crunchtools/gourmand:latest` (see `.pre-commit-config.yaml`)
 5. Container Build — `podman build -f Containerfile .`
+6. Gatehouse — AI review of the staged diff (pre-commit) and of every PR
+   (CI). Critical and high findings block. `SKIP=gatehouse` is allowed only
+   for a finding that is then answered in its PR thread.
