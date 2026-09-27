@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.10.1] - 2026-09-27
+
+### Changed
+- The README is Markdown now (`README.md`), with a logo, a recorded terminal
+  demo, and the capability-indexed layout the crunchtools constitution
+  (section XI) asks for. The reference that was in it moved, unchanged
+  apart from structure, into `docs/`: hashing, reports, graphs, reading
+  logs, library, install and philosophy each have a page. PyPI renders the
+  new README as Markdown. For #54.
+- `docs/drivers.md` moved to `docs/internal/drivers.md`: it is for
+  contributors.
+- The rpm and deb install `README.md` under `/usr/share/doc/petit` in place
+  of `README`.
+
+### Added
+- `docs/history.md`: where petit has lived since 2009, from the Perl
+  script `lt` through eyemg, Google Code, Fedora, EPEL, Debian and Ubuntu
+  to crunchtools, with sources, and what has been written about it.
+- `docs/demo/petit.tape` and the Containerfile that renders it, with petit
+  installed from the signed apt repository.
+
 ## [4.10.0] - 2026-09-26
 
 ### Added

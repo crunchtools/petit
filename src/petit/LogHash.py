@@ -18,7 +18,7 @@ Token-level rules — timestamps, addresses, hex, PIDs — are always safe; a
 token cannot carry a sentence. Phrase-level rules are allowed only when the
 tail they swallow is drawn from a bounded, machine-generated vocabulary.
 Then: what is the widest thing this rule's `.*` can swallow? If the format
-permits free text there, the rule is too wide. docs/drivers.md has more.
+permits free text there, the rule is too wide. docs/internal/drivers.md has more.
 """
 
 from __future__ import annotations

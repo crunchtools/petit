@@ -79,7 +79,7 @@ jobs:
           mkdir stage
           tar -C stage -xzf stage.tar.gz
           install -Dm0644 COPYING stage/usr/share/licenses/petit/COPYING
-          install -Dm0644 -t stage/usr/share/doc/petit README CHANGELOG.md
+          install -Dm0644 -t stage/usr/share/doc/petit README.md CHANGELOG.md
           rpmbuild -bb --define "pkg_version $VERSION" --define "stage $PWD/stage" \
             --define "_rpmdir $PWD/out" packaging/petit.spec
           mv out/noarch/*.rpm .
@@ -108,7 +108,7 @@ jobs:
           mkdir -p pkg/DEBIAN
           tar -C pkg -xzf stage.tar.gz
           install -Dm0644 COPYING pkg/usr/share/doc/petit/copyright
-          install -Dm0644 -t pkg/usr/share/doc/petit README CHANGELOG.md
+          install -Dm0644 -t pkg/usr/share/doc/petit README.md CHANGELOG.md
           sed "s/@VERSION@/$VERSION/" packaging/control.in > pkg/DEBIAN/control
           echo "Installed-Size: $(du -sk pkg/usr | cut -f1)" >> pkg/DEBIAN/control
           dpkg-deb -Zxz --root-owner-group --build pkg "petit_${VERSION}-1_all.deb"
