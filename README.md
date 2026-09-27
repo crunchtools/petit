@@ -4,13 +4,14 @@
 
 # petit
 
-petit is a command-line log analyzer for systems administrators. It takes
-out of a log everything that repeats (the routine logins, the cron runs,
-the health checks) and counts it, so what's left to read is short and the
-unusual lines stand out. It works out the format on its own (syslog,
-journalctl, Apache, Snort, application logs with stack traces, JSON, mail),
-draws activity graphs in the terminal, and does the same from Python. It
-has been doing this since 2009.
+petit is a command-line log analyzer for developers and systems administrators. 
+It mathes repetitive strings in a log (logins, cron runs, health checks, etc) 
+and counts them. This separates the signal from the noise, leaving a short, easy
+read. The unusual lines stand out. It also has a whole host of other functions
+which make working with logs more convenient (Graphs, Word Counts, etc). Petit 
+digests many different text formats, and it auto-selects the correct drivers 
+(syslog, journalctl, Apache, Snort, application logs with stack traces, JSON,
+email). And, it has been doing all of this since 2009.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/crunchtools/petit/master/docs/demo/petit.gif" alt="Terminal demo: a 1500-line sshd log hashed to 8 lines, then graphed, then reported by daemon and by word" width="800">
@@ -54,6 +55,7 @@ uv tool install petit-log-crunchtools
 # Or in a container
 podman run --rm -v $(pwd):/data:ro,Z quay.io/crunchtools/petit --hash /data/some.log
 ```
+Packages for RHEL, Fedora, Ubuntu, Debian, and Suse are [also available](https://crunchtools.github.io/packages/)
 
 Then:
 
