@@ -4,12 +4,12 @@
 
 # petit
 
-petit is a command-line log analyzer for developers and systems administrators. 
-It mathes repetitive strings in a log (logins, cron runs, health checks, etc) 
+petit is a command-line log analyzer for developers and systems administrators.
+It matches repetitive strings in a log (logins, cron runs, health checks, etc)
 and counts them. This separates the signal from the noise, leaving a short, easy
 read. The unusual lines stand out. It also has a whole host of other functions
-which make working with logs more convenient (Graphs, Word Counts, etc). Petit 
-digests many different text formats, and it auto-selects the correct drivers 
+which make working with logs more convenient (Graphs, Word Counts, etc). Petit
+digests many different text formats, and it auto-selects the correct drivers
 (syslog, journalctl, Apache, Snort, application logs with stack traces, JSON,
 email). And, it has been doing all of this since 2009.
 
@@ -55,7 +55,7 @@ uv tool install petit-log-crunchtools
 # Or in a container
 podman run --rm -v $(pwd):/data:ro,Z quay.io/crunchtools/petit --hash /data/some.log
 ```
-Packages for RHEL, Fedora, Ubuntu, Debian, and Suse are [also available](https://crunchtools.github.io/packages/)
+Packages for RHEL, Fedora, Ubuntu, Debian, and Suse are [also available](https://crunchtools.github.io/packages/).
 
 Then:
 
