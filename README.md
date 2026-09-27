@@ -33,8 +33,8 @@ has been doing this since 2009.
 
 4. **Format detection.** petit frames the input into records (JSON objects,
    mail messages, multi-line messages with their stack traces, or lines)
-   and votes on a driver to read them, streaming inputs of any size in
-   constant memory. [Reading logs](https://github.com/crunchtools/petit/blob/master/docs/reading-logs.md)
+   and votes on a driver to read them. It streams: memory follows the number
+   of distinct patterns, not the size of the log. [Reading logs](https://github.com/crunchtools/petit/blob/master/docs/reading-logs.md)
 
 5. **Python library.** `hash_lines()`, `analyze_text()` and friends return
    the same groups as data, with no files, stdout or exits involved.
