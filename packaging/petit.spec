@@ -28,7 +28,7 @@ cp -a %{stage}/. %{buildroot}/
 
 %files
 %license /usr/share/licenses/petit/COPYING
-%doc /usr/share/doc/petit/README
+%doc /usr/share/doc/petit/README.md
 %doc /usr/share/doc/petit/CHANGELOG.md
 /usr/bin/petit
 /usr/lib/petit

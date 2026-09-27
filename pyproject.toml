@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "petit-log-crunchtools"
-version = "4.10.0"
+version = "4.10.1"
 description = "Log analysis for systems administrators — detects the log format, then collapses the repetitive into counts so the unusual is what you read"
-readme = { file = "README", content-type = "text/plain" }
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
 license = "AGPL-3.0-or-later"
 license-files = ["COPYING"]
@@ -42,7 +42,7 @@ dev = ["pytest>=8.0", "ruff>=0.8", "mypy>=1.13"]
 packages = ["src/petit"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/petit", "README", "COPYING", "CHANGELOG.md", "AUTHORS", "test"]
+include = ["src/petit", "README.md", "COPYING", "CHANGELOG.md", "AUTHORS", "test"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]

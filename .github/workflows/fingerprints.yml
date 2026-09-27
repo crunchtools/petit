@@ -3,7 +3,7 @@ name: Fingerprints
 # Dependabot for the reboot corpora (#37). Ask endoflife.date which releases
 # are supported, capture a clean reboot of each under QEMU/KVM, and open a PR
 # when a corpus is new, has drifted, or has reached end of life. See
-# tools/fingerprints/refresh.py and docs/drivers.md.
+# tools/fingerprints/refresh.py and docs/internal/drivers.md.
 
 on:
   schedule:

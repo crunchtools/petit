@@ -2,7 +2,7 @@
 #
 # refresh.py reads this, asks endoflife.date which releases of each family
 # are supported today, and captures a clean reboot of each one under
-# QEMU/KVM. See docs/drivers.md, "Keeping the corpora current".
+# QEMU/KVM. See docs/internal/drivers.md, "Keeping the corpora current".
 #
 # role     corpus: the capture becomes src/petit/data/fingerprints/<corpus>-reboot.fp
 #          verify: the capture only checks that corpus (test/data/verify/)

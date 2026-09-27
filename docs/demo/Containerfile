@@ -1,0 +1,10 @@
+# VHS with petit installed from the signed crunchtools apt repository,
+# for rendering docs/demo/petit.tape. See the header of petit.tape.
+FROM ghcr.io/charmbracelet/vhs:latest
+
+ADD https://crunchtools.github.io/packages/crunchtools.asc /etc/apt/keyrings/crunchtools.asc
+ADD https://crunchtools.github.io/packages/deb/crunchtools.sources /etc/apt/sources.list.d/crunchtools.sources
+RUN chmod 0644 /etc/apt/keyrings/crunchtools.asc /etc/apt/sources.list.d/crunchtools.sources \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends petit \
+ && rm -rf /var/lib/apt/lists/*

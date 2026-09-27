@@ -16,7 +16,7 @@ USER 0
 WORKDIR /app
 RUN python3 -m venv /app/venv
 ENV PATH="/app/venv/bin:$PATH"
-COPY pyproject.toml README COPYING CHANGELOG.md AUTHORS ./
+COPY pyproject.toml README.md COPYING CHANGELOG.md AUTHORS ./
 COPY src/ ./src/
 RUN pip install --no-cache-dir .
 
