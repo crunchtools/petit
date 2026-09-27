@@ -24,6 +24,7 @@ throw away what you know is boring, and read what's left.
 | 2009-07-31 | First commit in this repository; the tool is still called `lt`. | `002657d` |
 | 2009-08-05 | "lt2": a new object model, built from the ground up. | `8dacd32` |
 | 2009-08-07 | Renamed petit. First RPM spec the same day, first .deb the next. | `bc9993f`, `afdb037`, `81411fa` |
+| 2009-08-12 | "Introduction: Petit Log Analysis Tool for Systems Administrators", the first video. | [YouTube](https://www.youtube.com/watch?v=5hI5sUPuzGc) |
 | 2009-08-17 | Shared code split into its own `crunchtools` library. | `1daa3be` |
 | 2009 | Hosted in Subversion at eyemg, with releases on opensource.eyemg.com. | `e91271f` |
 | 2009-09 | First public talk: "Science in Systems Administration" at the Akron Linux Users Group. | [crunchtools.com](https://crunchtools.com/science-in-systems-administration/) |
@@ -60,6 +61,8 @@ patterns doesn't grow linearly with the number of servers.
 
 Written with or about petit, oldest first:
 
+- [Introduction: Petit Log Analysis Tool for Systems Administrators](https://www.youtube.com/watch?v=5hI5sUPuzGc),
+  Scott McCarty, video, August 2009
 - [Science in Systems Administration](https://crunchtools.com/science-in-systems-administration/),
   Scott McCarty, ALUG, September 2009
 - [Centralized Logging System, Analysis, and Troubleshooting](https://crunchtools.com/centralizing-log-files/),

@@ -83,6 +83,7 @@ and became petit in August 2009. Since then:
 The full timeline, with sources, is in [History](https://github.com/crunchtools/petit/blob/master/docs/history.md).
 
 **Further reading:**
+[Introduction: Petit Log Analysis Tool for Systems Administrators](https://www.youtube.com/watch?v=5hI5sUPuzGc) (video, 2009),
 [Centralized Logging System, Analysis, and Troubleshooting](https://crunchtools.com/centralizing-log-files/) (2010),
 [Snort Alert Log: Simple Analysis and Daily Reporting with Arnold and Petit](https://crunchtools.com/log-analysis-simple-breakdown-of-snort-alert-log-with-arnold/) (2010),
 [Log Analysis with Python, PyOhio 2010](https://archive.org/details/pyvideo_514___pyohio-2010-log-analysis-with-python),

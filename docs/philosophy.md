@@ -53,6 +53,15 @@ to develop very simple best practices for analyzing logs.
    abnormal entries can be acted on, hopefully before there is noticeable
    impact to your system.
 
+## Design principles
+
+From the 2010 project page, and still true:
+
+- Sane by default, works out of the box
+- Designed to follow the Unix philosophy of small, fast and easy to use
+- Intersect, not overlap, with other tools such as cat, tail, awk, sed, and
+  grep
+
 ## Related
 
 - [History](history.md): where the idea came from, and where petit has
