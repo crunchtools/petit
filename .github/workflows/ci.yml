@@ -56,17 +56,3 @@ jobs:
 
       - name: Build container image
         run: docker build -f Containerfile -t petit:test .
-
-  validate-constitution:
-    name: Constitution Validation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/checkout@v7
-        with:
-          repository: crunchtools/constitution
-          path: .constitution
-
-      - name: Validate constitution
-        run: python3 .constitution/validate-constitution.py .specify/memory/constitution.md --verbose

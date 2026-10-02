@@ -26,3 +26,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    # Moves with `Inherits:` via constitution's scripts/fleet-bump.py.
+    ignore:
+      - dependency-name: "crunchtools/constitution*"
