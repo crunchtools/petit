@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- CI: constitution validation runs through constitution's reusable
+  `validate.yml` pinned to a release (`constitution.yml`), replacing the job
+  that checked the validator out at HEAD. Dependabot auto-merges green
+  GitHub Actions minor/patch bumps (`dependabot-automerge.yml`).
+
 ## [4.10.1] - 2026-09-27
 
 ### Changed
