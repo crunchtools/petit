@@ -1,20 +1,22 @@
 # petit Constitution
 
-> **Version:** 1.3.0
+> **Version:** 1.4.0
 > **Ratified:** 2026-09-20
-> **Amended:** 2026-09-26
+> **Amended:** 2026-10-02
 > **Status:** Active
-> **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.17.0
+> **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.18.0
 > **Profile:** CLI Tool
+
+This file holds petit's own rules. Everything the fleet requires (license,
+semantic versioning, the Gourmand and Gatehouse gates, Dependabot) comes from
+the inherited constitution and the CLI Tool profile at the pinned version, and
+is checked against this repo's files by `constitution.yml`. It is not restated
+here.
 
 ## Purpose
 
 Log analysis for systems administrators: detects the log format, then
 collapses the repetitive into counts so the unusual is what you read.
-
-## License
-
-AGPL-3.0-or-later.
 
 ## Versioning
 
@@ -98,7 +100,7 @@ Built on `quay.io/hummingbird/python:latest-fips`/`-fips-builder`,
 multi-stage venv pattern. No extra system packages — pure stdlib. Published
 to `quay.io/crunchtools/petit` and `ghcr.io/crunchtools/petit`.
 
-## Testing
+## Test Suite
 
 `test/test_api.py` covers the library surface with mocked-nothing-needed
 unit tests (no external API, nothing to mock). `test/test_cli.py` covers the
@@ -108,7 +110,7 @@ repo since 2009. `test/test_drivers.py` holds MERGE/NO_MERGE example pairs
 for every hash driver; a change to how aggressively a driver groups lands as
 a change to that table. Run via `uv run pytest -v`.
 
-### Hostile input
+## Hostile Input Invariants
 
 petit parses attacker-controlled text: its main library consumer sits on a
 prompt-injection perimeter. Every parser, framer, and driver MUST have
@@ -135,19 +137,3 @@ show that:
    Identifiers can be listed instead when the caller asks
    (`max_identifiers`), and a record whose identifiers cannot all be
    listed keeps them in its fingerprint.
-
-## Gourmand
-
-Zero violations required. Config in `gourmand.toml`, exceptions in
-`gourmand-exceptions.toml`.
-
-## Quality Gates
-
-1. Lint — `uv run ruff check src test`
-2. Type Check — `uv run mypy src`
-3. Tests — `uv run pytest -v`
-4. Gourmand — `gourmand check --full .`, run from `quay.io/crunchtools/gourmand:latest` (see `.pre-commit-config.yaml`)
-5. Container Build — `podman build -f Containerfile .`
-6. Gatehouse — AI review of the staged diff (pre-commit) and of every PR
-   (CI). Critical and high findings block. `SKIP=gatehouse` is allowed only
-   for a finding that is then answered in its PR thread.
