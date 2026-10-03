@@ -51,6 +51,8 @@ from .Filter import Filter
 from .records import MAX_JSON_DEPTH
 from .resources import search_prefixes
 
+logger = logging.getLogger(__name__)
+
 # Longest text a fingerprint key is built from. Every stopword regex runs
 # over the whole key, so an unbounded key is unbounded work; samples and raw
 # text are never truncated.
@@ -312,7 +314,7 @@ class SuperHash(UserDict[str, list[Any]]):
         sample_threshold = 3
 
         # Debugging
-        logging.info("Sample Type: " + self.sample)
+        logger.info("Sample Type: %s", self.sample)
 
         # Print out the dictionary first sorted by the word with
         # the most entries with an alphabetical subsort
@@ -394,8 +396,8 @@ class SuperHash(UserDict[str, list[Any]]):
                 identity = 2 * precision * recall / (precision + recall)
                 scores[name] = FingerprintScore(name, len(hits) / len(live), identity)
                 candidates.append((identity, name, keys, hits))
-                logging.info("Fingerprint %s: %d of %d patterns, identity %.3f",
-                             name, len(hits), len(live), identity)
+                logger.info("Fingerprint %s: %d of %d patterns, identity %.3f",
+                            name, len(hits), len(live), identity)
             if not candidates:
                 break
 

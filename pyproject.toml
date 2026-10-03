@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "petit-log-crunchtools"
-version = "4.10.1"
+version = "4.10.2"
 description = "Log analysis for systems administrators — detects the log format, then collapses the repetitive into counts so the unusual is what you read"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"

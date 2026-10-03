@@ -19,6 +19,8 @@ from collections.abc import Iterable, Iterator, Sequence
 
 from .errors import DataFileError, PetitError
 
+logger = logging.getLogger(__name__)
+
 
 def _guarded(lines: Iterable[str], name: str) -> Iterator[str]:
     """`lines`, with read errors turned into DataFileError.
@@ -83,7 +85,7 @@ class PathSource(Source):
         self.name = path
 
     def _read(self) -> Iterator[str]:
-        logging.debug("Opening File: %s", self.path)
+        logger.debug("Opening File: %s", self.path)
         with open(self.path) as handle:
             yield from handle
 

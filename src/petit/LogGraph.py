@@ -31,6 +31,8 @@ from typing import TYPE_CHECKING
 
 from .errors import EmptyLogError
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from .CrunchLog import LogEntry
 
@@ -262,7 +264,7 @@ class GraphHash(UserDict[str, int]):
         graph_value: dict[str, int] = {}
 
         # Debug output
-        logging.debug("length: " + str(graph_width))
+        logger.debug("length: %s", graph_width)
 
         # Use wide scale or small scale
         if self.wide:

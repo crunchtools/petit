@@ -4,6 +4,9 @@ import itertools
 import json
 import os
 import re
+import subprocess
+import sys
+import textwrap
 from typing import ClassVar
 
 import pytest
@@ -877,3 +880,25 @@ class TestIdentifiers:
         assert list(masked) == ["a/b", "m", "z"]
         assert json.loads(json.dumps(masked)) == {"z": "<ID>", "a/b": [{"~": "<ID>"}], "m": "text"}
         assert masked["z"] is IDENTIFIER
+
+
+def test_library_leaves_root_logger_alone():
+    """A host's basicConfig() must still take effect after petit has run (#89).
+
+    Module-level logging.info() installs a default root handler, after which
+    the host's own basicConfig() is a silent no-op. Run in a fresh
+    interpreter: pytest configures logging itself.
+    """
+    script = textwrap.dedent(f"""
+        import logging
+        from petit import analyze_text, hash_text
+        from petit.Filter import Filter
+        Filter("words.stopwords")
+        text = {secure_log()!r}
+        analyze_text(text)
+        hash_text(text)
+        print(logging.getLogger().handlers)
+    """)
+    child = subprocess.run([sys.executable, "-c", script],
+                           check=True, capture_output=True, text=True)
+    assert child.stdout.strip() == "[]"

@@ -9,6 +9,8 @@ import re
 from .errors import DataFileError
 from .resources import search_prefixes
 
+logger = logging.getLogger(__name__)
+
 
 def parse_rule(line: str) -> tuple[re.Pattern[str], str]:
     """One filter-file line: `regex<TAB>replacement`, or a bare regex.
@@ -79,7 +81,7 @@ class Filter:
                 raise DataFileError(
                     "could not open filter file " + str(self.file)
                 ) from exc
-            logging.info("Filter File: " + str(self.file))
+            logger.info("Filter File: %s", self.file)
             return
 
         # A misspelt filter name used to filter nothing, silently.
@@ -92,7 +94,7 @@ class Filter:
 
         # Asked once per call, not once per stopword: scrub runs for every
         # key, and the logging call alone used to cost as much as the regex.
-        debug = logging.getLogger().isEnabledFor(logging.DEBUG)
+        debug = logger.isEnabledFor(logging.DEBUG)
 
         # Check each stopword against each key
         for stopword, replacement in self.stopwords:
@@ -101,7 +103,7 @@ class Filter:
             old_string = string
             string = stopword.sub(replacement, string)
             if debug:
-                logging.debug(
+                logger.debug(
                     " SCRUBBING %s OF %s BECOMES %s", old_string, stopword.pattern, string
                 )
 
