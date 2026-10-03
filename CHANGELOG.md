@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.10.2] - 2026-10-02
+
+### Fixed
+- petit no longer logs on the root logger. Each module logs through
+  `logging.getLogger(__name__)`, so a host that calls
+  `logging.basicConfig(level=…, format=…)` after using petit gets its level
+  and format. Before, the first `logging.info()` from `Filter` installed a
+  default stderr handler on the root logger and the host's `basicConfig()`
+  became a silent no-op. The CLI's `-v` and `-d` output is unchanged. For #89.
+
 ### Changed
 - CI: constitution validation runs through constitution's reusable
   `validate.yml` pinned to a release (`constitution.yml`), replacing the job

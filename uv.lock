@@ -293,7 +293,7 @@ wheels = [
 
 [[package]]
 name = "petit-log-crunchtools"
-version = "4.10.1"
+version = "4.10.2"
 source = { editable = "." }
 
 [package.optional-dependencies]

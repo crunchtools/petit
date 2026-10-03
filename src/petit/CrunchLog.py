@@ -34,6 +34,8 @@ from .records import (
 )
 from .sources import ListSource, PathSource, Source, TextSource
 
+logger = logging.getLogger(__name__)
+
 # Bound on how many times select() will resample before giving up and
 # using RawEntry. Without a bound, input that no driver claims spins forever.
 MAX_SELECT_ROUNDS = 5
@@ -178,7 +180,7 @@ def vote(total: int, sample: dict[int, list[str]]) -> type[LogEntry]:
         # Tally logic is determined by driver
         for entry_type in entry_types:
             if t.is_type(entry_type):
-                logging.info("Determined %s: %s", entry_type.__name__, t.matrix[entry_type])
+                logger.info("Determined %s: %s", entry_type.__name__, t.matrix[entry_type])
 
                 return entry_type
 
@@ -186,8 +188,8 @@ def vote(total: int, sample: dict[int, list[str]]) -> type[LogEntry]:
         if len(indices) >= total:
             break
 
-    logging.info("No driver reached quorum after %d rounds; using RawEntry",
-                 MAX_SELECT_ROUNDS)
+    logger.info("No driver reached quorum after %d rounds; using RawEntry",
+                MAX_SELECT_ROUNDS)
     return RawEntry
 
 
@@ -416,8 +418,8 @@ class LogStream:
         try:
             return consume(self)
         except DriverMismatchError as exc:
-            logging.info("%s could not parse line %d; falling back to RawEntry",
-                         self.Entry.__name__, exc.line_number)
+            logger.info("%s could not parse line %d; falling back to RawEntry",
+                        self.Entry.__name__, exc.line_number)
             self.Entry = RawEntry
             self.degraded = True
             return consume(self)
