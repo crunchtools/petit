@@ -47,7 +47,7 @@ jobs:
   # copy-paste drift that broke the fleet before (RT #1468).
   gourmand:
     name: Code Quality (Gourmand)
-    uses: crunchtools/gatehouse/.github/workflows/gourmand.yml@v0.15.1
+    uses: crunchtools/gatehouse/.github/workflows/gourmand.yml@v0.15.2
 
   build-container:
     runs-on: ubuntu-latest
