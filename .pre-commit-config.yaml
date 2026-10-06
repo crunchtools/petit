@@ -1,15 +1,21 @@
 repos:
-  - repo: local
+  # ruff runs from its own pre-commit environment, not a host install
+  # (constitution XII, host contract). Keep rev at the ruff version in uv.lock.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
     hooks:
       - id: ruff-check
-        name: ruff check
-        entry: uv run ruff check --fix
-        language: system
+        args: [--fix]
         types: [python]
         stages: [pre-commit, pre-merge-commit]
+  # mypy needs the project's locked dependencies, so it runs `uv` from the uv
+  # image instead of a host install. The named volume keeps the environment and
+  # the mypy cache between runs; the repo is mounted read-only.
+  - repo: local
+    hooks:
       - id: mypy
         name: mypy
-        entry: uv run mypy src
+        entry: podman --events-backend=none run --rm --log-driver=none -v .:/src:ro,Z -w /src -v crunchtools-hook-cache:/cache -e UV_CACHE_DIR=/cache/uv -e UV_PROJECT_ENVIRONMENT=/cache/venv/petit ghcr.io/astral-sh/uv:python3.12-bookworm-slim uv run --locked --all-extras mypy --cache-dir /cache/mypy/petit src
         language: system
         pass_filenames: false
         types: [python]
