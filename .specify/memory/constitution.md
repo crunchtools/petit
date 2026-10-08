@@ -4,7 +4,7 @@
 > **Ratified:** 2026-09-20
 > **Amended:** 2026-10-02
 > **Status:** Active
-> **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.20.0
+> **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.21.0
 > **Profile:** CLI Tool
 
 This file holds petit's own rules. Everything the fleet requires (license,
