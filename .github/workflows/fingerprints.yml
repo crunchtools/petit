@@ -110,6 +110,7 @@ jobs:
           app-id: ${{ vars.CRUNCHTOOLS_CI_APP_ID || secrets.CRUNCHTOOLS_CI_APP_ID }}
           private-key: ${{ secrets.CRUNCHTOOLS_CI_APP_KEY }}
           owner: crunchtools
+          repositories: petit
 
       # The org doesn't let github.token open PRs, so the bot pushes and opens
       # them with the crunchtools-ci App token. That also starts CI on the PR.
@@ -177,6 +178,7 @@ jobs:
           app-id: ${{ vars.CRUNCHTOOLS_CI_APP_ID || secrets.CRUNCHTOOLS_CI_APP_ID }}
           private-key: ${{ secrets.CRUNCHTOOLS_CI_APP_KEY }}
           owner: crunchtools
+          repositories: petit-captures
 
       - uses: actions/checkout@v7
         with:
