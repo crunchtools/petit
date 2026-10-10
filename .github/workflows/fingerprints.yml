@@ -101,11 +101,22 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      # The crunchtools-ci App's token, not a personal one: it has its own rate
+      # limit, so a throttled account can't stop this step.
+      - name: Mint CI token
+        id: ci-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.CRUNCHTOOLS_CI_APP_ID || secrets.CRUNCHTOOLS_CI_APP_ID }}
+          private-key: ${{ secrets.CRUNCHTOOLS_CI_APP_KEY }}
+          owner: crunchtools
+          repositories: petit
+
       # The org doesn't let github.token open PRs, so the bot pushes and opens
-      # them with the org's dispatch token. That also starts CI on the PR.
+      # them with the crunchtools-ci App token. That also starts CI on the PR.
       - uses: actions/checkout@v7
         with:
-          token: ${{ secrets.CRUNCHTOOLS_DISPATCH_TOKEN }}
+          token: ${{ steps.ci-token.outputs.token }}
 
       - uses: astral-sh/setup-uv@v7
 
@@ -128,7 +139,7 @@ jobs:
       - name: Open or update the PR
         if: steps.propose.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.CRUNCHTOOLS_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ steps.ci-token.outputs.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -158,10 +169,21 @@ jobs:
           path: captures
           merge-multiple: true
 
+      # The crunchtools-ci App's token, not a personal one: it has its own rate
+      # limit, so a throttled account can't stop this step.
+      - name: Mint CI token
+        id: ci-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.CRUNCHTOOLS_CI_APP_ID || secrets.CRUNCHTOOLS_CI_APP_ID }}
+          private-key: ${{ secrets.CRUNCHTOOLS_CI_APP_KEY }}
+          owner: crunchtools
+          repositories: petit-captures
+
       - uses: actions/checkout@v7
         with:
           repository: crunchtools/petit-captures
-          token: ${{ secrets.CRUNCHTOOLS_DISPATCH_TOKEN }}
+          token: ${{ steps.ci-token.outputs.token }}
           path: archive
 
       - name: Push to crunchtools/petit-captures
