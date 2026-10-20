@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Container base images pinned to `quay.io/hummingbird/python:3.14*` instead of
+  `latest`, which moved to Python 3.15.0 on 2026-10-20 (crunchtools/constitution#66).
+
 ## [4.10.2] - 2026-10-02
 
 ### Fixed
