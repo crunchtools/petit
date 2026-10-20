@@ -96,7 +96,7 @@ CLI second; never the reverse.
 
 ## Container
 
-Built on `quay.io/hummingbird/python:latest-fips`/`-fips-builder`,
+Built on `quay.io/hummingbird/python:3.14-fips`/`-fips-builder`,
 multi-stage venv pattern. No extra system packages — pure stdlib. Published
 to `quay.io/crunchtools/petit` and `ghcr.io/crunchtools/petit`.
 
