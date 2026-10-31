@@ -18,81 +18,10 @@ permissions:
 jobs:
   dependency-audit:
     name: Dependency CVE Scan
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "latest"
-
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Install pip-audit
-        run: uv pip install pip-audit
-
-      - name: Run pip-audit
-        id: audit
-        continue-on-error: true
-        run: |
-          uv run pip-audit --format=json --output=audit-results.json || true
-          uv run pip-audit --format=markdown --output=audit-results.md || true
-
-          if [ -f audit-results.json ]; then
-            VULN_COUNT=$(cat audit-results.json | python -c "import sys,json; data=json.load(sys.stdin); print(len([d for d in data if d.get('vulns', [])]))" 2>/dev/null || echo "0")
-            echo "vuln_count=$VULN_COUNT" >> $GITHUB_OUTPUT
-          else
-            echo "vuln_count=0" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload audit results
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: security-audit-results
-          path: |
-            audit-results.json
-            audit-results.md
-          retention-days: 30
-
-      - name: Create issue for vulnerabilities
-        if: steps.audit.outputs.vuln_count != '0' && github.event_name == 'schedule'
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const fs = require('fs');
-            let body = '## Security Vulnerabilities Detected\n\n';
-            body += 'The weekly security scan found vulnerabilities in project dependencies.\n\n';
-
-            if (fs.existsSync('audit-results.md')) {
-              body += fs.readFileSync('audit-results.md', 'utf8');
-            }
-
-            body += '\n\n### Action Required\n';
-            body += '1. Review the vulnerabilities listed above\n';
-            body += '2. Update affected dependencies\n';
-            body += '3. Run `uv sync` and test\n';
-            body += '4. Create a PR with the fixes\n';
-
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `Security Alert: CVEs found in dependencies (${new Date().toISOString().split('T')[0]})`,
-              body: body,
-              labels: ['security', 'dependencies']
-            });
-
-      - name: Fail on vulnerabilities (PRs only)
-        if: steps.audit.outputs.vuln_count != '0' && github.event_name == 'pull_request'
-        run: |
-          echo "::error::Security vulnerabilities found in dependencies. See audit results."
-          exit 1
+    permissions:
+      contents: read
+      issues: write
+    uses: crunchtools/constitution/.github/workflows/dependency-audit.yml@v1.28.0
 
   container-scan:
     name: Container Security Scan
