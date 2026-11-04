@@ -1,44 +1,18 @@
-repos:
-  # ruff runs from its own pre-commit environment, not a host install
-  # (constitution XII, host contract). Keep rev at the ruff version in uv.lock.
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.9
-    hooks:
-      - id: ruff-check
-        args: [--fix]
-        types: [python]
-        stages: [pre-commit, pre-merge-commit]
-  # mypy needs the project's locked dependencies, so it runs `uv` from the uv
-  # image instead of a host install. The named volume keeps the environment and
-  # the mypy cache between runs; the repo is mounted read-only.
-  - repo: local
-    hooks:
-      - id: mypy
-        name: mypy
-        entry: podman --events-backend=none run --rm --log-driver=none -v .:/src:ro,Z -w /src -v crunchtools-hook-cache:/cache -e UV_CACHE_DIR=/cache/uv -e UV_PROJECT_ENVIRONMENT=/cache/venv/petit ghcr.io/astral-sh/uv:python3.12-bookworm-slim uv run --locked --all-extras mypy --cache-dir /cache/mypy/petit src
-        language: system
-        pass_filenames: false
-        types: [python]
-        stages: [pre-commit, pre-merge-commit]
+# Every check runs from python-sdlc, pinned here once (constitution XII,
+# v1.30.0). This `rev:` fixes the launcher, the image and every tool inside it,
+# for this laptop and for CI, which reads the same line.
+#
+# What each hook runs is configured in pyproject.toml: [tool.sdlc.commit],
+# [tool.sdlc.push], [tool.sdlc.ci]. `sdlc tiers` prints it.
+#
+# `default_install_hook_types` must name both: without pre-push, `pre-commit
+# install` wires only the commit hook and every verdict silently stops running.
 
-  # Gourmand runs from its container: the PyPI package of the same name
-  # shadows the real binary on PATH, so a bare `gourmand` is the wrong tool.
-  - repo: local
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: https://github.com/crunchtools/python-sdlc
+    rev: v0.3.4
     hooks:
-      - id: gourmand
-        name: Gourmand (AI slop detection)
-        entry: podman --events-backend=none run --rm --log-driver=none -v .:/src:Z -w /src quay.io/crunchtools/gourmand:latest check --full
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit, pre-merge-commit]
-  # Constitution XII gates, from crunchtools/gatehouse examples/pre-commit.yaml
-  - repo: local
-    hooks:
-      - id: gatehouse
-        name: Gatehouse (AI code review, staged diff)
-        entry: bash -c 'git diff --cached | podman --events-backend=none run --rm --log-driver=none -i --env-file "$HOME/.config/mcp-env/gatehouse.env" -v .:/src:ro,Z -w /src quay.io/crunchtools/gatehouse:latest --stdin'
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit, pre-merge-commit]
+      - id: sdlc-commit
+      - id: sdlc-push

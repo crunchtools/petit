@@ -65,8 +65,9 @@ CLOCK = r"([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]{1,9})?"
 # RFC 3339 as rsyslog and journalctl -o short-iso(-precise) write it:
 # 2010-06-24T17:56:32.197716-04:00, ...+05:30, ...Z, or -0400. The offset is
 # not applied; times stay the wall clock the host logged.
-RFC3339 = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})T" + CLOCK
-                     + r"(?:Z|[+-][0-9]{2}:?[0-9]{2})?")
+RFC3339 = re.compile(
+    r"([0-9]{4})-([0-9]{2})-([0-9]{2})T" + CLOCK + r"(?:Z|[+-][0-9]{2}:?[0-9]{2})?"
+)
 
 T = TypeVar("T")
 
@@ -87,7 +88,8 @@ def _candidates(name: str) -> list[type[Framer]]:
 
 
 def _decide(
-    surveyed: list[tuple[type[Framer], Claim | None]], name: str,
+    surveyed: list[tuple[type[Framer], Claim | None]],
+    name: str,
 ) -> tuple[type[Framer], Claim]:
     """The first framer that claimed the input, or the one named.
 
@@ -157,7 +159,6 @@ def vote(total: int, sample: dict[int, list[str]]) -> type[LogEntry]:
     # back to RawEntry, which is what the registry already appoints as the
     # last resort.
     for round_number in range(1, MAX_SELECT_ROUNDS + 1):
-
         # Widen the sample each round rather than accumulating votes on
         # top of the previous round's. The old code reused one Tally and
         # re-counted every line it had ever sampled, so round three
@@ -188,8 +189,7 @@ def vote(total: int, sample: dict[int, list[str]]) -> type[LogEntry]:
         if len(indices) >= total:
             break
 
-    logger.info("No driver reached quorum after %d rounds; using RawEntry",
-                MAX_SELECT_ROUNDS)
+    logger.info("No driver reached quorum after %d rounds; using RawEntry", MAX_SELECT_ROUNDS)
     return RawEntry
 
 
@@ -218,7 +218,6 @@ def read_source(filename: str) -> str:
 
 
 class Tally:
-
     def __init__(self, entry_types: list[type[LogEntry]], max_sample_lines: int) -> None:
         self.matrix: dict[type[LogEntry], int] = {}
         self.max_sample_lines = max_sample_lines
@@ -295,7 +294,8 @@ class LogStream:
             self._framer, self._claim = self._survey(candidates, framer)
         else:
             self._framer, self._claim = _decide(
-                [(f, f.claim(self._head)) for f in candidates], framer)
+                [(f, f.claim(self._head)) for f in candidates], framer
+            )
         self.framer = self._framer.name
 
         # A framer that knows what its records are names their driver; the
@@ -418,8 +418,11 @@ class LogStream:
         try:
             return consume(self)
         except DriverMismatchError as exc:
-            logger.info("%s could not parse line %d; falling back to RawEntry",
-                        self.Entry.__name__, exc.line_number)
+            logger.info(
+                "%s could not parse line %d; falling back to RawEntry",
+                self.Entry.__name__,
+                exc.line_number,
+            )
             self.Entry = RawEntry
             self.degraded = True
             return consume(self)
@@ -518,6 +521,7 @@ class CrunchLog(UserList["LogEntry"]):
 class LogEntry:
     """Interface class which specifies generic log format for consumption
     by other classes"""
+
     year = ""
     month = ""
     day = ""
@@ -546,27 +550,53 @@ class LogEntry:
         raise NotImplementedError
 
     def display(self) -> None:
-        print("Year: ", self.year,
-              "Month:", self.month,
-              "Day:", self.day,
-              "Hour:", self.hour,
-              "Minute:", self.minute,
-              "Second:", self.second,
-              "Host:", self.host,
-              "Payload", self.log_entry)
+        print(
+            "Year: ",
+            self.year,
+            "Month:",
+            self.month,
+            "Day:",
+            self.day,
+            "Hour:",
+            self.hour,
+            "Minute:",
+            self.minute,
+            "Second:",
+            self.second,
+            "Host:",
+            self.host,
+            "Payload",
+            self.log_entry,
+        )
 
     @staticmethod
     def tally_logic(tally: int, tally_threshold: float, _max_sample_lines: int) -> bool:
         return tally > tally_threshold
 
     def set_abnormal(self, value: list[str]) -> None:
-        (self.year, self.month, self.day, self.hour, self.minute, self.second,
-         self.host, self.daemon) = ["1900", "01", "01", "01", "01", "01", "#", "#"]
-        self.log_entry = ' '.join(value)
+        (
+            self.year,
+            self.month,
+            self.day,
+            self.hour,
+            self.minute,
+            self.second,
+            self.host,
+            self.daemon,
+        ) = ["1900", "01", "01", "01", "01", "01", "#", "#"]
+        self.log_entry = " ".join(value)
 
     def set_blank(self) -> None:
-        (self.year, self.month, self.day, self.hour, self.minute, self.second,
-         self.host, self.daemon) = ["1900", "01", "01", "01", "01", "01", "#", "#"]
+        (
+            self.year,
+            self.month,
+            self.day,
+            self.hour,
+            self.minute,
+            self.second,
+            self.host,
+            self.daemon,
+        ) = ["1900", "01", "01", "01", "01", "01", "#", "#"]
         self.log_entry = "#"
 
 
@@ -580,11 +610,10 @@ class SyslogEntry(LogEntry):
 
         # Should be normal log entry
         if len(value) >= 5:
-
             # Syslog does not store year information so, set to current year
             self.year = str(datetime.date.today().year)
             self.month, self.day, clocktime, self.host, self.daemon = value[:5]
-            self.log_entry = ' '.join(value[5:])
+            self.log_entry = " ".join(value[5:])
             self.hour, self.minute, self.second = _clock_fields(clocktime)
 
             # Convert month to integer
@@ -633,18 +662,16 @@ class RSyslogEntry(LogEntry):
 
         # Should be normal log entry
         if len(value) >= 5:
-
             # 2010-06-24T17:56:32.197716-04:00. This used to split on "-" to
             # find the offset, which only works west of UTC: "+05:30" and "Z"
             # raised, and so did any fraction but six digits (#11).
             stamp = RFC3339.fullmatch(value[0])
             if stamp is None:
                 raise ValueError(f"not an RFC 3339 timestamp: {value[0]!r}")
-            self.year, self.month, self.day, self.hour, self.minute, self.second = \
-                stamp.groups()
+            self.year, self.month, self.day, self.hour, self.minute, self.second = stamp.groups()
             self.host = value[1]
             self.daemon = value[2]
-            self.log_entry = ' '.join(value[3:])
+            self.log_entry = " ".join(value[3:])
 
             # Normalize integers to standard widths and convert to strings
             self.year = f"{int(self.year):04d}"
@@ -687,17 +714,29 @@ class ApacheAccessEntry(LogEntry):
         # Should be normal log entry
         if len(value) >= self.FIELD_COUNT:
             # Grab major chunks from the line
-            (_rhost, _ident, _ruser, apachedate, _junk, _junk2, uri, _protocol,
-             _status, _size, _referer, _agent) = value[:self.FIELD_COUNT]
+            (
+                _rhost,
+                _ident,
+                _ruser,
+                apachedate,
+                _junk,
+                _junk2,
+                uri,
+                _protocol,
+                _status,
+                _size,
+                _referer,
+                _agent,
+            ) = value[: self.FIELD_COUNT]
             self.log_entry = uri
 
             # Split up something that looks like this: [03/Aug/2009:11:53:08
-            entry_datetime = apachedate.split(':')
+            entry_datetime = apachedate.split(":")
             date = entry_datetime[0]
             self.hour = entry_datetime[1]
             self.minute = entry_datetime[2]
             self.second = entry_datetime[3]
-            dmy = date.split('/')
+            dmy = date.split("/")
             self.day = re.sub(r"\[", "", dmy[0])
             self.month = dmy[1]
             self.year = dmy[2]
@@ -748,7 +787,7 @@ class ApacheErrorEntry(LogEntry):
             # Split up something that looks like this:
             # [Sat Feb 27 12:16:10 2010]
             _junk, self.month, self.day, clocktime, self.year = value[:5]
-            self.log_entry = ' '.join(value[5:])
+            self.log_entry = " ".join(value[5:])
             self.hour, self.minute, self.second = clocktime.split(":")
 
             # Convert month to integer
@@ -801,7 +840,7 @@ class SecureLogEntry(LogEntry):
             # Syslog does not store year information so, set to current year
             self.year = str(datetime.date.today().year)
             self.month, self.day, clocktime, self.host, self.daemon = value[:5]
-            self.log_entry = ' '.join(value[5:])
+            self.log_entry = " ".join(value[5:])
             self.hour, self.minute, self.second = _clock_fields(clocktime)
 
             # Convert month to integer
@@ -944,25 +983,24 @@ class SnortEntry(LogEntry):
 
         # Should be normal log entry
         if len(value) >= 2:
-
             # Snort does not store year information so, set to current year
             self.year = str(datetime.date.today().year)
 
             # Initial break down
             snortdate_parts = value[:1]
-            self.log_entry = ' '.join(value[1:])
+            self.log_entry = " ".join(value[1:])
 
             # Looks like "09/29-10:18:46.026172"
-            snortdate, _junk = snortdate_parts[0].split('.')
+            snortdate, _junk = snortdate_parts[0].split(".")
 
             # Looks like "09/29-10:18:46"
-            self.month, snortdate = snortdate.split('/')
+            self.month, snortdate = snortdate.split("/")
 
             # Looks like "29-10:18:46"
-            self.day, snortdate = snortdate.split('-')
+            self.day, snortdate = snortdate.split("-")
 
             # Looks like "10:18:46"
-            self.hour, self.minute, self.second = snortdate.split(':')
+            self.hour, self.minute, self.second = snortdate.split(":")
 
             # Normalize integers to standard widths and convert to strings
             self.year = f"{int(self.year):04d}"
@@ -999,8 +1037,12 @@ entry_types: list[type[LogEntry]] = []
 
 for _name in list(_module_attrs.keys()):
     _candidate = _module_attrs[_name]
-    if isinstance(_candidate, type) and issubclass(_candidate, LogEntry) \
-            and _candidate is not LogEntry and _candidate is not RawEntry:
+    if (
+        isinstance(_candidate, type)
+        and issubclass(_candidate, LogEntry)
+        and _candidate is not LogEntry
+        and _candidate is not RawEntry
+    ):
         entry_types.append(_candidate)
 
 entry_types.append(RawEntry)

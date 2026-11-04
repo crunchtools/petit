@@ -121,9 +121,7 @@ def _load_corpora() -> tuple[list[tuple[str, frozenset[str]]], dict[str, float]]
             if name.endswith(".fp"):
                 by_name.setdefault(name, os.path.join(prefix, name))
     if not by_name:
-        raise DataFileError(
-            "could not locate fingerprint files in any of: " + ", ".join(prefixes)
-        )
+        raise DataFileError("could not locate fingerprint files in any of: " + ", ".join(prefixes))
 
     corpora = []
     stamps = []
@@ -242,7 +240,7 @@ class SuperHash(UserDict[str, list[Any]]):
         name and source address for every later reader of the log.
         """
         text = " ".join(getattr(entry, name) for name in self.KEY_FIELDS)
-        return self.filter.scrub(self.generalize(text[:self.max_key_chars]))
+        return self.filter.scrub(self.generalize(text[: self.max_key_chars]))
 
     def identify(self, entry: LogEntry) -> tuple[str, tuple[str, ...], tuple[str, ...]]:
         """An entry's key, and the identifier fields and values taken out of it.
@@ -318,10 +316,7 @@ class SuperHash(UserDict[str, list[Any]]):
 
         # Print out the dictionary first sorted by the word with
         # the most entries with an alphabetical subsort
-        for key in sorted(sorted(self.keys()),
-                key=lambda k: self[k][0],
-                reverse=True):
-
+        for key in sorted(sorted(self.keys()), key=lambda k: self[k][0], reverse=True):
             # Print all lines as sample
             if self.sample == "all":
                 print(str(self[key][0]) + ":\t" + self[key][1][0].log_entry)
@@ -332,14 +327,11 @@ class SuperHash(UserDict[str, list[Any]]):
             elif self.sample == "threshold":
                 # Print sample for small values below/equal to threshold
                 if self[key][0] <= sample_threshold:
-                    print(str(self[key][0]) + ":\t" +
-                    self[key][1][0].log_entry)
+                    print(str(self[key][0]) + ":\t" + self[key][1][0].log_entry)
                 else:
                     print(str(self[key][0]) + ":\t" + str(key))
             else:
-                raise PetitError(
-                    "unsupported sampling mode: " + str(self.sample)
-                )
+                raise PetitError("unsupported sampling mode: " + str(self.sample))
 
     def fingerprint(self) -> list[str]:
         """Collapse every known event sequence found in this hash.
@@ -396,8 +388,13 @@ class SuperHash(UserDict[str, list[Any]]):
                 identity = 2 * precision * recall / (precision + recall)
                 scores[name] = FingerprintScore(name, len(hits) / len(live), identity)
                 candidates.append((identity, name, keys, hits))
-                logger.info("Fingerprint %s: %d of %d patterns, identity %.3f",
-                            name, len(hits), len(live), identity)
+                logger.info(
+                    "Fingerprint %s: %d of %d patterns, identity %.3f",
+                    name,
+                    len(hits),
+                    len(live),
+                    identity,
+                )
             if not candidates:
                 break
 
@@ -406,9 +403,11 @@ class SuperHash(UserDict[str, list[Any]]):
             label = [name]
             gone = set(keys)
             for identity, other, other_keys, _ in candidates[1:]:
-                if (identity >= best * (1 - FINGERPRINT_MARGIN)
-                        and len(hits - other_keys) < evidence(keys)
-                        and not present(other_keys, consumed | keys)):
+                if (
+                    identity >= best * (1 - FINGERPRINT_MARGIN)
+                    and len(hits - other_keys) < evidence(keys)
+                    and not present(other_keys, consumed | keys)
+                ):
                     label.append(other)
                     gone |= other_keys
             name = "|".join(sorted(label))
@@ -480,11 +479,15 @@ class SecureLogHash(SuperHash):
         (re.compile("Accepted password for.*"), "Accepted password for #"),
         (re.compile("Postponed publickey for.*"), "Postponed publickey for #"),
         (re.compile(r"Invalid user (\S+) from \S+"), r"Invalid user \1 from #"),
-        (re.compile("reverse mapping checking getaddrinfo for.*"),
-         "reverse mapping checking getaddrinfo for #"),
+        (
+            re.compile("reverse mapping checking getaddrinfo for.*"),
+            "reverse mapping checking getaddrinfo for #",
+        ),
         (re.compile("Connection closed by.*"), "Connection closed by #"),
-        (re.compile(r"Failed password for invalid user (\S+) from \S+"),
-         r"Failed password for invalid user \1 from #"),
+        (
+            re.compile(r"Failed password for invalid user (\S+) from \S+"),
+            r"Failed password for invalid user \1 from #",
+        ),
         (re.compile(r"Failed password for (\S+) from \S+"), r"Failed password for \1 from #"),
         (re.compile("authentication failure.*"), "authentication failure #"),
         # Misc
@@ -537,14 +540,13 @@ class WordHash(SuperHash):
         # stopword regex, so each distinct word is scrubbed once.
         memo: dict[str, str] = {}
         for entry in log:
-
             # Base the wordcount on the log_entry payload. Keep the entry,
             # not the word, so a group's members are the lines the word
             # appeared in; the record counts as grouped under its first
             # word that survives scrubbing.
             grouped = False
             for whole in entry.log_entry.split():
-                word = whole[:self.max_key_chars]
+                word = whole[: self.max_key_chars]
                 key = memo.get(word)
                 if key is None:
                     if len(memo) >= self.SCRUB_MEMO:
@@ -614,7 +616,8 @@ def _pointer_token(key: str) -> str:
 
 
 def pull_identifiers(
-    value: Any, max_fields: int = MAX_IDENTIFIER_FIELDS,
+    value: Any,
+    max_fields: int = MAX_IDENTIFIER_FIELDS,
 ) -> tuple[Any, tuple[str, ...], tuple[str, ...]]:
     """Take the identifier-shaped strings out of a JSON value.
 
@@ -658,12 +661,13 @@ def pull_identifiers(
         if isinstance(node, (dict, list)) and visited + len(node) > MAX_IDENTIFIER_NODES:
             raise _DeclinedError
         if isinstance(node, dict):
-            return {key: walk(node[key], pointer + "/" + _pointer_token(str(key)), depth + 1)
-                    for key in sorted(node)}
+            return {
+                key: walk(node[key], pointer + "/" + _pointer_token(str(key)), depth + 1)
+                for key in sorted(node)
+            }
         if isinstance(node, list):
             return [walk(item, f"{pointer}/{idx}", depth + 1) for idx, item in enumerate(node)]
-        if type(node) is str and len(node) <= MAX_IDENTIFIER_CHARS \
-                and _IDENTIFIER.fullmatch(node):
+        if type(node) is str and len(node) <= MAX_IDENTIFIER_CHARS and _IDENTIFIER.fullmatch(node):
             if len(fields) >= max_fields:
                 raise _DeclinedError
             fields.append(pointer)
@@ -695,9 +699,11 @@ def canonical(value: Any) -> str:
     fingerprints with their counts, `[<N>*3]`.
     """
     if isinstance(value, dict):
-        return "{" + ",".join(
-            json.dumps(key) + ":" + canonical(value[key]) for key in sorted(value)
-        ) + "}"
+        return (
+            "{"
+            + ",".join(json.dumps(key) + ":" + canonical(value[key]) for key in sorted(value))
+            + "}"
+        )
     if isinstance(value, list):
         runs: list[list[Any]] = []
         for item in value:
@@ -713,7 +719,11 @@ def canonical(value: Any) -> str:
 # Scalars fingerprinted by type alone. Looked up by exact type, so a bool
 # is never taken for the int it subclasses.
 _SCALAR_TOKENS: dict[type, str] = {
-    bool: "<B>", type(None): "<NULL>", int: "<N>", float: "<N>", Identifier: "<ID>",
+    bool: "<B>",
+    type(None): "<NULL>",
+    int: "<N>",
+    float: "<N>",
+    Identifier: "<ID>",
 }
 
 # Strings shaped like a parameter, whatever they say.
@@ -766,9 +776,11 @@ class StructuredHash(SuperHash):
         # - a caller's filter folded two shapes into one key, whose rows
         #   must all name the same fields to be read;
         # - the key is full, and masking without listing would delete them.
-        if (len(text) > self.max_key_chars
-                or (key in self and (listed is None or listed[0] != fields))
-                or (listed is not None and len(listed[1]) >= self.max_identifiers)):
+        if (
+            len(text) > self.max_key_chars
+            or (key in self and (listed is None or listed[0] != fields))
+            or (listed is not None and len(listed[1]) >= self.max_identifiers)
+        ):
             return self._whole(entry)
         return key, fields, values
 
@@ -781,7 +793,7 @@ class StructuredHash(SuperHash):
         document = getattr(entry, "document", None)
         if document is None:
             return super().key_for(entry)
-        return self.filter.scrub(self.generalize(canonical(document)[:self.max_key_chars]))
+        return self.filter.scrub(self.generalize(canonical(document)[: self.max_key_chars]))
 
 
 # Leading quote markers on a line, however they are spaced: "> > >", ">>>".
@@ -839,11 +851,14 @@ class EmailHash(SuperHash):
                 written.append(" ".join(line.split()))
 
         skeleton = (
-            "headers=" + ",".join(sorted(set(names)))
-            + " quotes=" + "-".join(str(d) for d in depths)
-            + " signature=" + ("yes" if signed else "no")
+            "headers="
+            + ",".join(sorted(set(names)))
+            + " quotes="
+            + "-".join(str(d) for d in depths)
+            + " signature="
+            + ("yes" if signed else "no")
         )
-        text = " / ".join(written)[:self.max_key_chars]
+        text = " / ".join(written)[: self.max_key_chars]
         return skeleton + " body=" + self.filter.scrub(text)
 
 

@@ -142,6 +142,9 @@ def open_source(filename: str) -> Source:
     if filename != "__none__":
         return PathSource(filename)
     stdin = io.TextIOWrapper(
-        sys.stdin.buffer, encoding=sys.stdin.encoding, errors=sys.stdin.errors, newline=None,
+        sys.stdin.buffer,
+        encoding=sys.stdin.encoding,
+        errors=sys.stdin.errors,
+        newline=None,
     )
     return HandleSource(stdin, "<stdin>")

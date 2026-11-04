@@ -135,7 +135,8 @@ def supported(family: dict[str, Any]) -> list[dict[str, Any]]:
         return [{"name": "", "codename": ""}]
     releases = json.loads(fetch(EOL_API.format(family["eol_product"])))["result"]["releases"]
     keep = [
-        r for r in releases
+        r
+        for r in releases
         if not r.get("isEol")
         and (r.get("isLts") or not family.get("lts_only"))
         and version_key(r["name"])[0] >= family.get("min_major", 0)
@@ -155,8 +156,14 @@ def platforms(only: set[str] | None = None) -> list[Platform]:
                 found.append(make_platform(family, release, family["role"]))
             else:
                 # The releases before the newest verify the newest's corpus.
-                found.append(make_platform(family, release, family["role"] if index == 0
-                                           else "verify", corpus_from=releases[0]))
+                found.append(
+                    make_platform(
+                        family,
+                        release,
+                        family["role"] if index == 0 else "verify",
+                        corpus_from=releases[0],
+                    )
+                )
     return [p for p in found if only is None or p.id in only]
 
 
@@ -169,8 +176,12 @@ def template_fields(release: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def make_platform(family: dict[str, Any], release: dict[str, Any], role: str,
-                  corpus_from: dict[str, Any] | None = None) -> Platform:
+def make_platform(
+    family: dict[str, Any],
+    release: dict[str, Any],
+    role: str,
+    corpus_from: dict[str, Any] | None = None,
+) -> Platform:
     version = release["name"]
     fields = template_fields(release)
     return Platform(
@@ -196,9 +207,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     lock = load_lock()
     wanted = [p for p in current if only is None or p.id in only]
     plan = {
-        "capture": [
-            {"id": p.id, "action": "recheck" if p.id in lock else "new"} for p in wanted
-        ],
+        "capture": [{"id": p.id, "action": "recheck" if p.id in lock else "new"} for p in wanted],
         "retire": sorted(set(lock) - {p.id for p in current}),
     }
     text = json.dumps(plan, indent=2)
@@ -215,9 +224,12 @@ def resolve(platform: Platform) -> tuple[str, str]:
     """The image URL and its expected digest, `algorithm:hex`."""
     if platform.family == "fedora":
         for entry in json.loads(fetch(FEDORA_RELEASES)):
-            if (entry["version"] == platform.version and entry["arch"] == "x86_64"
-                    and entry["subvariant"] == "Cloud_Base"
-                    and entry["link"].endswith(".qcow2")):
+            if (
+                entry["version"] == platform.version
+                and entry["arch"] == "x86_64"
+                and entry["subvariant"] == "Cloud_Base"
+                and entry["link"].endswith(".qcow2")
+            ):
                 return entry["link"], "sha256:" + entry["sha256"]
         raise SystemExit(f"{platform.id}: no Cloud_Base qcow2 in {FEDORA_RELEASES}")
     image, checksum = platform.image, platform.checksum
@@ -230,7 +242,8 @@ def resolve(platform: Platform) -> tuple[str, str]:
 def alpine_image(version: str) -> str:
     listing = fetch(ALPINE_CLOUD.format(version=version)).decode()
     pattern = re.compile(
-        rf"alpine-{re.escape(version)}\.(\d+)-x86_64-(?:bios-)?cloudinit-r(\d+)\.qcow2")
+        rf"alpine-{re.escape(version)}\.(\d+)-x86_64-(?:bios-)?cloudinit-r(\d+)\.qcow2"
+    )
     names = {m.group(0): (int(m.group(1)), int(m.group(2))) for m in pattern.finditer(listing)}
     if not names:
         raise SystemExit(f"alpine{version}: no x86_64 cloud-init image listed")
@@ -263,8 +276,10 @@ def download_once(url: str, algorithm: str, expected: str, target: Path) -> None
     hasher = hashlib.new(algorithm)
     partial = target.with_suffix(".part")
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with (urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT) as response,
-          partial.open("wb") as out):
+    with (
+        urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT) as response,
+        partial.open("wb") as out,
+    ):
         while chunk := response.read(CHUNK_BYTES):
             hasher.update(chunk)
             out.write(chunk)
@@ -282,8 +297,9 @@ def user_data(platform: Platform) -> str:
         return base64.b64encode((GUEST / name).read_bytes()).decode()
 
     template = (GUEST / f"user-data-{platform.log}.yaml").read_text()
-    return template.format(script=encoded("petit-capture.sh"),
-                           unit=encoded("petit-capture.service"))
+    return template.format(
+        script=encoded("petit-capture.sh"), unit=encoded("petit-capture.service")
+    )
 
 
 def make_seed(platform: Platform, work: Path) -> Path:
@@ -296,8 +312,20 @@ def make_seed(platform: Platform, work: Path) -> Path:
         return seed
     for tool in (["xorriso", "-as", "mkisofs"], ["genisoimage"], ["mkisofs"]):
         if shutil.which(tool[0]):
-            subprocess.run([*tool, "-quiet", "-output", str(seed), "-volid", "cidata",
-                            "-joliet", "-rock", *files], check=True)
+            subprocess.run(
+                [
+                    *tool,
+                    "-quiet",
+                    "-output",
+                    str(seed),
+                    "-volid",
+                    "cidata",
+                    "-joliet",
+                    "-rock",
+                    *files,
+                ],
+                check=True,
+            )
             return seed
     raise SystemExit("need cloud-localds, xorriso, genisoimage or mkisofs for the seed")
 
@@ -312,18 +340,52 @@ def qemu() -> str:
 def boot(base: Path, seed: Path | None, work: Path) -> dict[str, str]:
     """Boot a throwaway overlay of `base` until the guest powers off."""
     disk, out = work / "disk.qcow2", work / "out.img"
-    subprocess.run(["qemu-img", "create", "-q", "-f", "qcow2", "-F", "qcow2", "-b",
-                    str(base), str(disk), DISK_SIZE], check=True)
+    subprocess.run(
+        [
+            "qemu-img",
+            "create",
+            "-q",
+            "-f",
+            "qcow2",
+            "-F",
+            "qcow2",
+            "-b",
+            str(base),
+            str(disk),
+            DISK_SIZE,
+        ],
+        check=True,
+    )
     with out.open("wb") as blank:
         blank.truncate(OUTPUT_DISK_BYTES)
     command = [
-        qemu(), "-machine", "q35,accel=kvm", "-cpu", "host", "-m", "2048", "-smp", "2",
-        "-display", "none", "-monitor", "none", "-serial", f"file:{work / 'console.log'}",
-        "-drive", f"file={disk},if=none,id=root,format=qcow2",
-        "-device", "virtio-blk-pci,drive=root,bootindex=0",
-        "-drive", f"file={out},if=none,id=out,format=raw",
-        "-device", "virtio-blk-pci,drive=out,serial=petitout",
-        "-netdev", "user,id=net0", "-device", "virtio-net-pci,netdev=net0,mac=52:54:00:00:00:01",
+        qemu(),
+        "-machine",
+        "q35,accel=kvm",
+        "-cpu",
+        "host",
+        "-m",
+        "2048",
+        "-smp",
+        "2",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-serial",
+        f"file:{work / 'console.log'}",
+        "-drive",
+        f"file={disk},if=none,id=root,format=qcow2",
+        "-device",
+        "virtio-blk-pci,drive=root,bootindex=0",
+        "-drive",
+        f"file={out},if=none,id=out,format=raw",
+        "-device",
+        "virtio-blk-pci,drive=out,serial=petitout",
+        "-netdev",
+        "user,id=net0",
+        "-device",
+        "virtio-net-pci,netdev=net0,mac=52:54:00:00:00:01",
     ]
     if seed:
         # A virtio disk, not a CD-ROM: Debian 12's cloud kernel has no SATA
@@ -361,16 +423,22 @@ def extract_event(files: dict[str, str]) -> list[str]:
         lines = files["messages.log"].splitlines()
         start = last_index(lines, lambda line: is_marker(line, "rebooting"))
         end = last_index(lines, lambda line: is_marker(line, "capturing"))
-        event = lines[start + 1:end]
+        event = lines[start + 1 : end]
     else:
         previous = files["previous.log"].splitlines()
         current = files["current.log"].splitlines()
         start = last_index(previous, lambda line: is_marker(line, "rebooting"))
-        finished = [i for i, line in enumerate(current)
-                    if re.search(r"systemd\[1\]: Startup finished", line)]
-        end = finished[0] if finished else last_index(
-            current, lambda line: is_marker(line, "capturing"))
-        event = previous[start + 1:] + current[:end + 1]
+        finished = [
+            i
+            for i, line in enumerate(current)
+            if re.search(r"systemd\[1\]: Startup finished", line)
+        ]
+        end = (
+            finished[0]
+            if finished
+            else last_index(current, lambda line: is_marker(line, "capturing"))
+        )
+        event = previous[start + 1 :] + current[: end + 1]
     return [line for line in event if MARKER not in line and not line.startswith("-- ")]
 
 
@@ -397,8 +465,7 @@ def scrub(lines: list[str]) -> list[str]:
         except ValueError:
             return text
         # Netmasks and the wildcard say nothing about the machine.
-        return text if text in KEEP_IPV4 or text.startswith("255.") else swap(
-            text, "192.0.2.{}")
+        return text if text in KEEP_IPV4 or text.startswith("255.") else swap(text, "192.0.2.{}")
 
     def ipv6(match: re.Match[str]) -> str:
         text = match.group(0)
@@ -419,15 +486,19 @@ def assert_clean(lines: list[str]) -> None:
     """Refuse to write a capture that still names the machine that made it."""
     text = "\n".join(lines)
     names = {socket.gethostname().split(".")[0], os.environ.get("USER", "")}
-    leaks = [name for name in names
-             if len(name) >= 4 and re.search(rf"\b{re.escape(name)}\b", text)]
+    leaks = [
+        name for name in names if len(name) >= 4 and re.search(rf"\b{re.escape(name)}\b", text)
+    ]
     for match in IPV4.finditer(text):
         try:
             address = ipaddress.IPv4Address(match.group(0))
         except ValueError:
             continue
-        if (match.group(0) not in KEEP_IPV4 and not match.group(0).startswith("255.")
-                and address not in ipaddress.ip_network("192.0.2.0/24")):
+        if (
+            match.group(0) not in KEEP_IPV4
+            and not match.group(0).startswith("255.")
+            and address not in ipaddress.ip_network("192.0.2.0/24")
+        ):
             leaks.append(match.group(0))
     if leaks:
         raise SystemExit(f"capture still carries {sorted(set(leaks))}; not writing it")
@@ -484,10 +555,14 @@ def cmd_capture(args: argparse.Namespace) -> int:
             (out / f"{'ab'[run]}.log").write_text("\n".join(event) + "\n")
             archive_raw(files, out / "raw" / "ab"[run])
             os_name = re.search(r'^PRETTY_NAME="?([^"\n]*)', files.get("os-release", ""), re.M)
-    meta = {**asdict(platform), "image": image, "digest": digest,
-            "kernel": files.get("kernel", "").strip(),
-            "os": os_name.group(1) if os_name else "",
-            "captured": datetime.date.today().isoformat()}
+    meta = {
+        **asdict(platform),
+        "image": image,
+        "digest": digest,
+        "kernel": files.get("kernel", "").strip(),
+        "os": os_name.group(1) if os_name else "",
+        "captured": datetime.date.today().isoformat(),
+    }
     (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")
     print(f"{platform.id}: {runs} capture(s) in {out}")
     return 0
@@ -498,9 +573,17 @@ def manual_platform(args: argparse.Namespace) -> Platform:
     role, _, corpus = args.as_.partition(":")
     if role not in {"corpus", "verify"} or not corpus:
         raise SystemExit("--image needs --as corpus:NAME or --as verify:NAME")
-    return Platform(id=args.platform, family=args.platform, version="", role=role,
-                    corpus=corpus, log=args.log, source="cloud" if args.seed else "image",
-                    image="", checksum="")
+    return Platform(
+        id=args.platform,
+        family=args.platform,
+        version="",
+        role=role,
+        corpus=corpus,
+        log=args.log,
+        source="cloud" if args.seed else "image",
+        image="",
+        checksum="",
+    )
 
 
 # --- judging captures --------------------------------------------------------
@@ -520,23 +603,33 @@ def cmd_verify() -> int:
     for log in sorted(VERIFY.glob("*.fp/*.log")):
         ok, identity, first = first_match(log.read_text(), log.parent.name)
         failed += not ok
-        print(f"{'ok ' if ok else 'BAD'} {log.relative_to(VERIFY)}  identity={identity:.2f}"
-              f"  first={first or '-'}")
+        print(
+            f"{'ok ' if ok else 'BAD'} {log.relative_to(VERIFY)}  identity={identity:.2f}"
+            f"  first={first or '-'}"
+        )
     return 1 if failed else 0
 
 
 def managed_corpora() -> list[str]:
-    return sorted({f"{entry['corpus']}-reboot.fp" for entry in load_lock().values()
-                   if entry["role"] == "corpus"})
+    return sorted(
+        {
+            f"{entry['corpus']}-reboot.fp"
+            for entry in load_lock().values()
+            if entry["role"] == "corpus"
+        }
+    )
 
 
 def overlap_report() -> str:
     corpora, _weights = LogHash._load_corpora()
     keys = {name: set(found) for name, found in corpora}
     names = [name for name in managed_corpora() if name in keys]
-    lines = ["### Corpus overlap (Jaccard of fingerprint keys)", "",
-             "| | " + " | ".join(n.removesuffix("-reboot.fp") for n in names) + " |",
-             "|---" * (len(names) + 1) + "|"]
+    lines = [
+        "### Corpus overlap (Jaccard of fingerprint keys)",
+        "",
+        "| | " + " | ".join(n.removesuffix("-reboot.fp") for n in names) + " |",
+        "|---" * (len(names) + 1) + "|",
+    ]
     for a in names:
         cells = [f"{len(keys[a] & keys[b]) / len(keys[a] | keys[b]):.2f}" for b in names]
         lines.append(f"| {a.removesuffix('-reboot.fp')} | " + " | ".join(cells) + " |")
@@ -581,9 +674,20 @@ def adopt(meta: dict[str, Any], capture: Path, lock: dict[str, dict[str, str]]) 
         ok, identity, named = first_match(first, platform.corpus_file)
         if not ok:
             reason += f"; does NOT match {platform.corpus_file} first ({named or '-'})"
-    lock[platform.id] = {k: str(meta[k]) for k in
-                         ("family", "version", "role", "corpus", "image", "digest", "kernel",
-                          "os", "captured")}
+    lock[platform.id] = {
+        k: str(meta[k])
+        for k in (
+            "family",
+            "version",
+            "role",
+            "corpus",
+            "image",
+            "digest",
+            "kernel",
+            "os",
+            "captured",
+        )
+    }
     return reason
 
 
@@ -593,8 +697,9 @@ def retire(ids: list[str], lock: dict[str, dict[str, str]]) -> list[str]:
         entry = lock.pop(platform_id)
         corpus_file = f"{entry['corpus']}-reboot.fp"
         (VERIFY / corpus_file / f"{platform_id}.log").unlink(missing_ok=True)
-        still_used = any(e["corpus"] == entry["corpus"] and e["role"] == "corpus"
-                         for e in lock.values())
+        still_used = any(
+            e["corpus"] == entry["corpus"] and e["role"] == "corpus" for e in lock.values()
+        )
         if entry["role"] == "corpus" and not still_used:
             (CORPORA / corpus_file).unlink(missing_ok=True)
             shutil.rmtree(VERIFY / corpus_file, ignore_errors=True)
@@ -618,8 +723,12 @@ def cmd_propose(args: argparse.Namespace) -> int:
         print("no change")
         return 0
     LOCK.write_text(json.dumps(dict(sorted(lock.items())), indent=2) + "\n")
-    body = ("Captured by `tools/fingerprints/refresh.py` under QEMU/KVM.\n\n"
-            + "\n".join(notes) + "\n\n" + overlap_report())
+    body = (
+        "Captured by `tools/fingerprints/refresh.py` under QEMU/KVM.\n\n"
+        + "\n".join(notes)
+        + "\n\n"
+        + overlap_report()
+    )
     if args.summary:
         Path(args.summary).write_text(body)
     print(body)
@@ -647,8 +756,11 @@ def main(argv: list[str] | None = None) -> int:
     capture.add_argument("--image", help="a local qcow2 instead of the manifest's")
     capture.add_argument("--as", dest="as_", default="", help="with --image: ROLE:CORPUS")
     capture.add_argument("--log", default="journal", choices=["journal", "messages"])
-    capture.add_argument("--seed", action="store_true",
-                         help="with --image: the image runs cloud-init, give it the seed")
+    capture.add_argument(
+        "--seed",
+        action="store_true",
+        help="with --image: the image runs cloud-init, give it the seed",
+    )
     capture.set_defaults(func=cmd_capture)
 
     propose = sub.add_parser("propose", help="adopt captures that change something")

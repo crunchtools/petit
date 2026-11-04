@@ -19,7 +19,17 @@ from petit import records as framing
 from petit.CrunchLog import CrunchLog, RSyslogEntry, StructuredEntry, SyslogEntry
 from petit.LogHash import MAX_IDENTIFIER_NODES
 
-BUDGET_SECONDS = 5.0
+# A ceiling on pathological INPUT, not a benchmark of the machine. It has to
+# clear the slowest place these tests run, which is now the python-sdlc gate:
+# that container is given half the host's CPUs on purpose, so a budget tuned to
+# a full machine measures the container's share instead of the code. 5.0 flaked
+# at 5.3s there while passing on the run before it.
+#
+# 20.0 still catches what this guards against -- the quadratic blowups and
+# regex backtracking these inputs are built to provoke run for minutes, not
+# seconds -- while leaving room for a throttled runner. If a change makes one
+# of these take 20 seconds, something is genuinely wrong.
+BUDGET_SECONDS = 20.0
 
 
 def bounded(text: str, **kwargs):
@@ -85,9 +95,7 @@ class TestLongRecords:
 
     def test_huge_email_body_is_detected_quickly(self):
         body = ("word " * 20 + "\n") * 3_000
-        thread = "".join(
-            f"From: a{i}@example.com\nSubject: s\n\n{body}\n" for i in range(3)
-        )
+        thread = "".join(f"From: a{i}@example.com\nSubject: s\n\n{body}\n" for i in range(3))
         assert bounded(thread).framer == "message"
 
     def test_email_quote_and_signature_probes(self):
@@ -104,40 +112,50 @@ class TestLongRecords:
         assert bounded("1" * 2_000_000 + "\n", driver="RawEntry") is not None
 
 
-@pytest.mark.parametrize("filter_name", ["hash.stopwords", "strict.stopwords",
-                                         "words.stopwords", "daemon.stopwords"])
-@pytest.mark.parametrize("probe", [
-    "0" * 200_000,
-    "a-" * 100_000,
-    "1." * 100_000,
-    "0x" * 100_000,
-    "Sep 22 " * 50_000,
-    "2026-09-22T" * 30_000,
-    "deadbeef" * 50_000,
-    "::ffff:" * 50_000,
-    "-" * 200_000 + "x",
-    "_" * 200_000 + "a",
-    "!" * 100_000 + "about" + "!" * 100_000 + "x",
-    "a0:" * 100_000,
-    "0000-" * 50_000,
-    "F96D\\x2d" * 30_000,
-    "0000\\x2d" * 30_000,
-    "tmp" * 100_000,
-    "rootfs_" * 50_000,
-    "#." * 100_000,
-    " -" * 100_000,
-], ids=lambda probe: repr(probe[:12]))
+@pytest.mark.parametrize(
+    "filter_name", ["hash.stopwords", "strict.stopwords", "words.stopwords", "daemon.stopwords"]
+)
+@pytest.mark.parametrize(
+    "probe",
+    [
+        "0" * 200_000,
+        "a-" * 100_000,
+        "1." * 100_000,
+        "0x" * 100_000,
+        "Sep 22 " * 50_000,
+        "2026-09-22T" * 30_000,
+        "deadbeef" * 50_000,
+        "::ffff:" * 50_000,
+        "-" * 200_000 + "x",
+        "_" * 200_000 + "a",
+        "!" * 100_000 + "about" + "!" * 100_000 + "x",
+        "a0:" * 100_000,
+        "0000-" * 50_000,
+        "F96D\\x2d" * 30_000,
+        "0000\\x2d" * 30_000,
+        "tmp" * 100_000,
+        "rootfs_" * 50_000,
+        "#." * 100_000,
+        " -" * 100_000,
+    ],
+    ids=lambda probe: repr(probe[:12]),
+)
 def test_stopword_rules_are_linear(filter_name, probe):
-    result = bounded(probe + "\n", driver="RawEntry", filter_name=filter_name,
-                     max_record_chars=10**7)
+    result = bounded(
+        probe + "\n", driver="RawEntry", filter_name=filter_name, max_record_chars=10**7
+    )
     assert result is not None
 
 
-@pytest.mark.parametrize("probe", [
-    "Invalid user " + "a" * 200_000,
-    "Failed password for " + "x " * 100_000,
-    "Failed password for invalid user " + "b" * 200_000 + " from",
-], ids=lambda probe: repr(probe[:24]))
+@pytest.mark.parametrize(
+    "probe",
+    [
+        "Invalid user " + "a" * 200_000,
+        "Failed password for " + "x " * 100_000,
+        "Failed password for invalid user " + "b" * 200_000 + " from",
+    ],
+    ids=lambda probe: repr(probe[:24]),
+)
 def test_secure_generalizations_are_linear(probe):
     line = f"Sep 22 10:00:00 host01 sshd[1]: {probe}\n"
     result = bounded(line * 3, driver="SecureLogEntry", max_record_chars=10**7)
@@ -145,14 +163,18 @@ def test_secure_generalizations_are_linear(probe):
     assert result.lines_in == 3
 
 
-@pytest.mark.parametrize("payload", [
-    "\x00" * 10_000,
-    "\ud800\udfff\n" * 10,
-    '["\\ud800"]\n',
-    "From: a\nTo: b\n\n" * 5_000,
-    "\n" * 100_000,
-    "{" * 100_000,
-], ids=["nul", "surrogates", "json-surrogate", "header-flood", "blank-lines", "open-braces"])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "\x00" * 10_000,
+        "\ud800\udfff\n" * 10,
+        '["\\ud800"]\n',
+        "From: a\nTo: b\n\n" * 5_000,
+        "\n" * 100_000,
+        "{" * 100_000,
+    ],
+    ids=["nul", "surrogates", "json-surrogate", "header-flood", "blank-lines", "open-braces"],
+)
 def test_odd_bytes_never_escape_as_anything_but_petit_errors(payload):
     result = bounded(payload)
     assert result is not None
@@ -175,13 +197,17 @@ class TestMultilineFraming:
 
     # Explicit ids: pytest otherwise names each case after its million-character
     # value, and `pytest -v` prints that name as one line of the CI log.
-    @pytest.mark.parametrize("line", [
-        "a" * 1_000_000,
-        "a " * 500_000,
-        "[" + "0" * 1_000_000,
-        "<1>" + "9" * 1_000_000,
-        "ERROR" + " " * 1_000_000,
-    ], ids=["letters", "words", "bracket-digits", "pri-digits", "level-spaces"])
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "a" * 1_000_000,
+            "a " * 500_000,
+            "[" + "0" * 1_000_000,
+            "<1>" + "9" * 1_000_000,
+            "ERROR" + " " * 1_000_000,
+        ],
+        ids=["letters", "words", "bracket-digits", "pri-digits", "level-spaces"],
+    )
     def test_head_patterns_on_huge_lines(self, line):
         start = time.perf_counter()
         for pattern in framing.HEAD_PATTERNS.values():
@@ -190,11 +216,15 @@ class TestMultilineFraming:
 
 
 class TestTimestampDrivers:
-    @pytest.mark.parametrize("token", [
-        "2020-09-27T00:00:03." + "1" * 1_000_000,
-        "2020-09-27T00:00:03" + "+" * 1_000_000,
-        "0" * 1_000_000,
-    ], ids=["long-fraction", "plus-flood", "digits"])
+    @pytest.mark.parametrize(
+        "token",
+        [
+            "2020-09-27T00:00:03." + "1" * 1_000_000,
+            "2020-09-27T00:00:03" + "+" * 1_000_000,
+            "0" * 1_000_000,
+        ],
+        ids=["long-fraction", "plus-flood", "digits"],
+    )
     def test_rfc3339_on_huge_tokens(self, token):
         start = time.perf_counter()
         assert not RSyslogEntry.is_type([token, "host", "kernel:", "x"])
@@ -202,8 +232,9 @@ class TestTimestampDrivers:
 
     def test_clock_on_a_huge_fraction(self):
         start = time.perf_counter()
-        assert not SyslogEntry.is_type(["Sep", "23", "10:00:00." + "1" * 1_000_000,
-                                        "host", "cron[1]:", "x"])
+        assert not SyslogEntry.is_type(
+            ["Sep", "23", "10:00:00." + "1" * 1_000_000, "host", "cron[1]:", "x"]
+        )
         assert time.perf_counter() - start < BUDGET_SECONDS
 
 
@@ -228,6 +259,7 @@ class TestIdentifiers:
             for _ in range(levels):
                 value = [value]
             return value
+
         assert pull_identifiers(nest(framing.MAX_JSON_DEPTH))[2] == ("PROJ-1",)
         assert pull_identifiers(nest(framing.MAX_JSON_DEPTH + 1))[2] == ()
 
@@ -244,10 +276,18 @@ class TestIdentifiers:
         assert result.groups[0].count == 100
         assert len(result.groups) == 50_000 - 99
 
-    @pytest.mark.parametrize("probe", [
-        "a" * 63 + "-", "A" + "_" * 31 + "-" + "1" * 31, "0" * 63 + "g", "f" * 64,
-        "0" * 20 + "a", "#" + "1" * 63,
-    ], ids=lambda probe: repr(probe[:12]))
+    @pytest.mark.parametrize(
+        "probe",
+        [
+            "a" * 63 + "-",
+            "A" + "_" * 31 + "-" + "1" * 31,
+            "0" * 63 + "g",
+            "f" * 64,
+            "0" * 20 + "a",
+            "#" + "1" * 63,
+        ],
+        ids=lambda probe: repr(probe[:12]),
+    )
     def test_the_identifier_shape_is_linear(self, probe):
         records = [{"k": probe, "n": n} for n in range(20_000)]
         result = bounded(json.dumps(records), framer="json", max_identifiers=10)

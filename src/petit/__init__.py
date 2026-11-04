@@ -63,4 +63,3 @@ __all__ = [
     "hash_text",
     "pull_identifiers",
 ]
-

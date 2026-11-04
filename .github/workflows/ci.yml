@@ -1,58 +1,45 @@
+# The repo's own checks, from python-sdlc at the release .pre-commit-config.yaml
+# pins -- the same image and the same commands the laptop runs, so a green push
+# predicts a green CI (constitution XII, v1.30.0).
+#
+# NOT every check on this pull request: Gourmand and Gatehouse run as their own
+# workflows, which is why `sdlc ci` leaves them out (XII: "CI runs push's checks
+# except Gourmand and Gatehouse, which CI runs through their own workflows").
+#
+# The job NAME `sdlc ci` is the required check in the org ruleset "Python SDLC
+# gates". Renaming the job stops it gating, silently.
+
 name: CI
 
 on:
   push:
     branches: [master]
   pull_request:
-    branches: [master]
   workflow_dispatch:
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
-    env:
-      UV_PYTHON: ${{ matrix.python-version }}
+permissions:
+  contents: read
 
+jobs:
+  sdlc:
+    name: sdlc ci
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
         with:
-          version: "latest"
+          persist-credentials: false
 
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+      # The release is read from .pre-commit-config.yaml, so one line pins the
+      # launcher, the image and every tool in it, for the laptop and CI both.
+      - name: sdlc ci
+        run: |
+          set -eu
+          rev=$(awk '/repo: https:\/\/github.com\/crunchtools\/python-sdlc/ {f=1; next}
+                     f && /rev:/ {print $2; exit}' .pre-commit-config.yaml)
+          [ -n "$rev" ] || { echo "no python-sdlc rev in .pre-commit-config.yaml" >&2; exit 2; }
+          git clone -q --depth 1 --branch "$rev" https://github.com/crunchtools/python-sdlc "$RUNNER_TEMP/sdlc"
+          $RUNNER_TEMP/sdlc/bin/sdlc ci
 
-      - name: Install dependencies
-        run: uv sync --all-extras
-
-      - name: Run linter
-        run: uv run ruff check src test tools
-
-      - name: Run type checker
-        run: uv run mypy src
-
-      - name: Run tests
-        run: uv run pytest -v
-
-  # Gatehouse code review runs in its own workflow (gatehouse.yml) on
-  # pull_request_target, so it covers fork PRs too. See that file.
-
-  # Call the reusable workflow rather than inlining the job body. Gatehouse
-  # hosts gourmand.yml for the whole fleet; a private copy here is the
-  # copy-paste drift that broke the fleet before (RT #1468).
   gourmand:
     name: Code Quality (Gourmand)
     uses: crunchtools/gatehouse/.github/workflows/gourmand.yml@v0
-
-  build-container:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Build container image
-        run: docker build -f Containerfile -t petit:test .
