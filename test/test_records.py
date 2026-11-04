@@ -80,13 +80,16 @@ class TestJsonFramer:
         assert JsonFramer.claims(buf)
         assert [(r.start, r.end) for r in JsonFramer.frame(buf)] == [(0, 1), (2, 3)]
 
-    @pytest.mark.parametrize("text", [
-        "[1, 2, 3]\n",
-        "[]\n",
-        '{"a": 1}\nnot json\n',
-        '{"a": 1,\n "b": 2}\n',
-        '"just a string"\n',
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "[1, 2, 3]\n",
+            "[]\n",
+            '{"a": 1}\nnot json\n',
+            '{"a": 1,\n "b": 2}\n',
+            '"just a string"\n',
+        ],
+    )
     def test_declines_what_is_not_objects(self, text):
         assert not JsonFramer.claims(text.splitlines(keepends=True))
 
@@ -107,8 +110,17 @@ class TestMessageFramer:
         assert [g.count for g in result.groups] == [2, 1, 1]
 
     def test_mbox_separators(self):
-        buf = ["From a@x Mon Sep 22\n", "Subject: one\n", "\n", "body\n", "\n",
-               "From b@x Mon Sep 22\n", "Subject: two\n", "\n", "body\n"]
+        buf = [
+            "From a@x Mon Sep 22\n",
+            "Subject: one\n",
+            "\n",
+            "body\n",
+            "\n",
+            "From b@x Mon Sep 22\n",
+            "Subject: two\n",
+            "\n",
+            "body\n",
+        ]
         assert [(r.start, r.end) for r in MessageFramer.frame(buf)] == [(0, 5), (5, 9)]
 
     def test_a_single_message_is_not_a_thread(self):
@@ -122,31 +134,51 @@ class TestMessageFramer:
 class TestMultilineFramer:
     # One message head per HEAD_PATTERNS entry, as the format writes it.
     HEADS: ClassVar[dict[str, tuple[str, str]]] = {
-        "bsd": ("Sep 19 15:41:27 host gnome-shell[2856]: first",
-                "Sep 19 15:41:28 host gnome-shell[2856]: second"),
-        "iso": ("2026-09-20T08:00:00.101-04:00 host app[1]: first",
-                "2026-09-20 08:00:01,202 ERROR app: second"),
-        "iso_bracket": ("[2026-09-20T08:00:00,101][WARN ][o.e.c] first",
-                        "[2026-09-20 08:00:01] ERROR second"),
+        "bsd": (
+            "Sep 19 15:41:27 host gnome-shell[2856]: first",
+            "Sep 19 15:41:28 host gnome-shell[2856]: second",
+        ),
+        "iso": (
+            "2026-09-20T08:00:00.101-04:00 host app[1]: first",
+            "2026-09-20 08:00:01,202 ERROR app: second",
+        ),
+        "iso_bracket": (
+            "[2026-09-20T08:00:00,101][WARN ][o.e.c] first",
+            "[2026-09-20 08:00:01] ERROR second",
+        ),
         "level_iso": ("ERROR 2026-09-20 08:00:00 first", "[INFO] 2026-09-20 08:00:01 second"),
         "slash": ("2026/09/20 08:00:00 [error] 12#12: first", "2026/09/20 08:00:01 second"),
-        "ctime_bracket": ("[Sun Apr 10 04:04:00 2011] [error] first",
-                          "[Sun Apr 10 04:04:01.123456 2011] [error] second"),
-        "clf": ('1.2.3.4 - - [10/Apr/2011:04:04:00 -0400] "GET / HTTP/1.1" 200 1',
-                '1.2.3.4 - - [10/Apr/2011:04:04:01 -0400] "GET /x HTTP/1.1" 200 1'),
+        "ctime_bracket": (
+            "[Sun Apr 10 04:04:00 2011] [error] first",
+            "[Sun Apr 10 04:04:01.123456 2011] [error] second",
+        ),
+        "clf": (
+            '1.2.3.4 - - [10/Apr/2011:04:04:00 -0400] "GET / HTTP/1.1" 200 1',
+            '1.2.3.4 - - [10/Apr/2011:04:04:01 -0400] "GET /x HTTP/1.1" 200 1',
+        ),
         "snort": ("09/29-08:25:54.519035 [**] first", "09/29-08:25:55.100000 [**] second"),
-        "klog": ("I0920 08:00:00.123456    1 main.go:42] first",
-                 "E0920 08:00:01.000001    1 main.go:43] second"),
+        "klog": (
+            "I0920 08:00:00.123456    1 main.go:42] first",
+            "E0920 08:00:01.000001    1 main.go:43] second",
+        ),
         "kernel": ("[    0.000000] Linux version 6.12.0", "[ 1234.567890] usb 3-2: second"),
-        "epoch": ("1789845105.816 12 10.0.0.1 TCP_MISS/200 first",
-                  "1789845106 12 10.0.0.1 TCP_HIT/200 second"),
-        "jul": ("Sep 20, 2026 8:00:00 AM org.apache.catalina.Foo first",
-                "Sep 20, 2026 8:00:01 PM org.apache.catalina.Foo second"),
-        "tomcat": ("20-Sep-2026 08:00:00.101 SEVERE [main] first",
-                   "20-Sep-2026 08:00:01.202 INFO [main] second"),
+        "epoch": (
+            "1789845105.816 12 10.0.0.1 TCP_MISS/200 first",
+            "1789845106 12 10.0.0.1 TCP_HIT/200 second",
+        ),
+        "jul": (
+            "Sep 20, 2026 8:00:00 AM org.apache.catalina.Foo first",
+            "Sep 20, 2026 8:00:01 PM org.apache.catalina.Foo second",
+        ),
+        "tomcat": (
+            "20-Sep-2026 08:00:00.101 SEVERE [main] first",
+            "20-Sep-2026 08:00:01.202 INFO [main] second",
+        ),
         "us_date": ("09/20/2026 08:00:00 first", "09/20/2026 8:00:01 second"),
-        "redis": ("12345:M 20 Sep 2026 08:00:00.101 * first",
-                  "12345:C 20 Sep 2026 08:00:01.202 # second"),
+        "redis": (
+            "12345:M 20 Sep 2026 08:00:00.101 * first",
+            "12345:C 20 Sep 2026 08:00:01.202 # second",
+        ),
         "time_ms": ("08:00:00.101 [main] ERROR first", "08:00:01,202 [main] INFO second"),
     }
 
@@ -195,20 +227,27 @@ class TestMultilineFramer:
         assert sum(fit_graph(log, 80).values()) == 16
 
     def test_a_different_timestamp_inside_a_record_does_not_split_it(self):
-        buf = ["2026-09-20 08:00:00 ERROR first\n",
-               "08:00:00.500 this line only looks like a head\n",
-               "    indented\n",
-               "2026-09-20 08:00:01 INFO second\n"]
+        buf = [
+            "2026-09-20 08:00:00 ERROR first\n",
+            "08:00:00.500 this line only looks like a head\n",
+            "    indented\n",
+            "2026-09-20 08:00:01 INFO second\n",
+        ]
         assert [(r.start, r.end) for r in MultilineFramer.frame(buf)] == [(0, 3), (3, 4)]
 
-    @pytest.mark.parametrize(("why", "text"), [
-        ("no indented line",
-         "Sep 19 15:41:27 h a[1]: x\nnot indented\nSep 19 15:41:28 h a[1]: y\n"),
-        ("first line is not a head", "hello\n    world\nSep 19 15:41:28 h a[1]: y\n"),
-        ("indented prose", "Dear reader,\n    this is a letter\n    with indents\n"),
-        ("YAML", "server:\n  port: 8080\n  host: 0.0.0.0\n"),
-        ("only blank lines", "\n\n\n"),
-    ])
+    @pytest.mark.parametrize(
+        ("why", "text"),
+        [
+            (
+                "no indented line",
+                "Sep 19 15:41:27 h a[1]: x\nnot indented\nSep 19 15:41:28 h a[1]: y\n",
+            ),
+            ("first line is not a head", "hello\n    world\nSep 19 15:41:28 h a[1]: y\n"),
+            ("indented prose", "Dear reader,\n    this is a letter\n    with indents\n"),
+            ("YAML", "server:\n  port: 8080\n  host: 0.0.0.0\n"),
+            ("only blank lines", "\n\n\n"),
+        ],
+    )
     def test_declines(self, why, text):
         assert not MultilineFramer.claims(text.splitlines(keepends=True)), why
 

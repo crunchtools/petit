@@ -115,9 +115,9 @@ source lines each covered.
 
 ```python
 class SecureLogHash(SuperHash):
-    KEY_FIELDS = ("daemon", "log_entry")        # fields joined into the key
+    KEY_FIELDS = ("daemon", "log_entry")  # fields joined into the key
     GENERALIZATIONS = [(re.compile(...), "...")]  # format phrases, applied first
-    DEFAULT_FILTER = "hash.stopwords"           # stopword file, applied second
+    DEFAULT_FILTER = "hash.stopwords"  # stopword file, applied second
 ```
 
 The key for an entry is its `KEY_FIELDS` joined by a space, with

@@ -58,8 +58,7 @@ class Filter:
         instance = cls.__new__(cls)
         instance.file = "<patterns>"
         instance.stopwords = [
-            (re.compile(p), "#") if isinstance(p, str)
-            else (re.compile(p[0]), p[1])
+            (re.compile(p), "#") if isinstance(p, str) else (re.compile(p[0]), p[1])
             for p in patterns
         ]
         return instance
@@ -78,9 +77,7 @@ class Filter:
                 with open(self.file) as f:
                     self.stopwords = [parse_rule(line) for line in f.read().splitlines()]
             except OSError as exc:
-                raise DataFileError(
-                    "could not open filter file " + str(self.file)
-                ) from exc
+                raise DataFileError("could not open filter file " + str(self.file)) from exc
             logger.info("Filter File: %s", self.file)
             return
 
@@ -98,14 +95,11 @@ class Filter:
 
         # Check each stopword against each key
         for stopword, replacement in self.stopwords:
-
             # Replace matches with this pattern's replacement
             old_string = string
             string = stopword.sub(replacement, string)
             if debug:
-                logger.debug(
-                    " SCRUBBING %s OF %s BECOMES %s", old_string, stopword.pattern, string
-                )
+                logger.debug(" SCRUBBING %s OF %s BECOMES %s", old_string, stopword.pattern, string)
 
         return string
 

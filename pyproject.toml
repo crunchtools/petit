@@ -72,7 +72,14 @@ max-branches = 15
 max-statements = 60
 
 [tool.ruff.lint.per-file-ignores]
-"test/*" = ["PLR2004"]
+"test/*" = [
+    "PLR2004",
+    "E501",  # the fixtures are real syslog lines. petit is a log analyser, and a
+             # log line is one line -- wrapping one to fit 100 columns changes the
+             # input under test into something no syslog would emit. Five lines
+             # exceed it by 1-3 characters. `ruff check .` reached these for the
+             # first time under python-sdlc; the old CI never linted test/.
+]
 "src/petit/api.py" = [
     "N813",  # `from . import CrunchLog as _drivers` avoids shadowing the CrunchLog class also
              # imported in this file; the module genuinely is named CrunchLog
@@ -84,7 +91,28 @@ max-statements = 60
 ]
 
 [tool.mypy]
+files = ["src"]
 python_version = "3.11"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+
+# mypy covers `src`, which is what the old CI checked (`mypy src`). The test
+# suite is unannotated and `strict = true` produced 261 no-untyped-def and
+# no-untyped-call findings there -- not one of them a type error. Relaxing the
+# annotation rules for the tests alone did not work: a per-module override
+# keyed on "test.*" matches nothing because `test/` has no __init__.py, "test_*"
+# did not match either, and naming `test_streaming` explicitly crashed mypy
+# 2.4.0. Rather than fight the tool or widen the ignore, the scope stays where
+# the old CI had it and annotating the suite is tracked separately.
+
+[tool.sdlc.push]
+# No in-repo Semgrep rules: the check exits 2 when .semgrep is absent
+# rather than scanning nothing and calling it a pass.
+skip = ["semgrep"]
+
+[tool.sdlc.ci]
+# The CodeQL Action job uploads to the Security tab and annotates new
+# alerts on the pull request, so CI does not analyse a second time.
+# The push tier still gates on it.
+skip = ["codeql"]

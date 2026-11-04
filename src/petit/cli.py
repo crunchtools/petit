@@ -63,10 +63,17 @@ from petit.LogGraph import (
 from petit.records import FRAMER_NAMES
 from petit.sources import open_source
 
-GRAPH_MODES = frozenset({
-    "mode_graph", "mode_sgraph", "mode_mgraph", "mode_hgraph",
-    "mode_dgraph", "mode_mograph", "mode_ygraph",
-})
+GRAPH_MODES = frozenset(
+    {
+        "mode_graph",
+        "mode_sgraph",
+        "mode_mgraph",
+        "mode_hgraph",
+        "mode_dgraph",
+        "mode_mograph",
+        "mode_ygraph",
+    }
+)
 
 # --span suffixes. "mo" is listed before "m" so the regex tries it first.
 SPAN_UNITS = {"mo": "month", "s": "second", "m": "minute", "h": "hour", "d": "day", "y": "year"}
@@ -81,9 +88,11 @@ def parse_span(value: str) -> tuple[str, int]:
     if match is None:
         raise argparse.ArgumentTypeError(
             f"invalid span {value!r}: expected a count and one of "
-            + ", ".join(SPAN_UNITS) + " (e.g. 90m, 36h, 18mo)"
+            + ", ".join(SPAN_UNITS)
+            + " (e.g. 90m, 36h, 18mo)"
         )
     return SPAN_UNITS[match.group(2)], int(match.group(1))
+
 
 # Process Signals
 
@@ -105,155 +114,197 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(usage="%(prog)s [options] [file]")
 
     # Handle flags
-    parser.add_argument("-v", "--verbose",
-                         dest="verbose",
-                         action="count",
-                         help="Show verbose output")
+    parser.add_argument(
+        "-v", "--verbose", dest="verbose", action="count", help="Show verbose output"
+    )
 
-    parser.add_argument("--sample", dest="sample",
-                         action="store_const",
-                         const="threshold",
-                         default="threshold",
-                         help="Show sample output for small numbered entries")
+    parser.add_argument(
+        "--sample",
+        dest="sample",
+        action="store_const",
+        const="threshold",
+        default="threshold",
+        help="Show sample output for small numbered entries",
+    )
 
-    parser.add_argument("--nosample",
-                         dest="sample",
-                         action="store_const",
-                         const="none",
-                         help="Do not sample output for low count entries")
+    parser.add_argument(
+        "--nosample",
+        dest="sample",
+        action="store_const",
+        const="none",
+        help="Do not sample output for low count entries",
+    )
 
-    parser.add_argument("--allsample", dest="sample",
-                         action="store_const",
-                         const="all",
-                         help="Show samples instead of munged text for all entries")
+    parser.add_argument(
+        "--allsample",
+        dest="sample",
+        action="store_const",
+        const="all",
+        help="Show samples instead of munged text for all entries",
+    )
 
-    parser.add_argument("--filter",
-                         dest="filter",
-                         action="store_true",
-                         default=None, help="Use filter files during processing")
+    parser.add_argument(
+        "--filter",
+        dest="filter",
+        action="store_true",
+        default=None,
+        help="Use filter files during processing",
+    )
 
-    parser.add_argument("--nofilter",
-                         dest="filter",
-                         action="store_false",
-                         help="Do not use filter files during processing")
+    parser.add_argument(
+        "--nofilter",
+        dest="filter",
+        action="store_false",
+        help="Do not use filter files during processing",
+    )
 
-    parser.add_argument("--wide",
-                         dest="wide",
-                         action="store_true",
-                         default=False,
-                         help="Use wider graph characters")
+    parser.add_argument(
+        "--wide", dest="wide", action="store_true", default=False, help="Use wider graph characters"
+    )
 
-    parser.add_argument("--tick",
-                         dest="tick",
-                         default="#",
-                         help="Change tick character from default")
+    parser.add_argument(
+        "--tick", dest="tick", default="#", help="Change tick character from default"
+    )
 
-    parser.add_argument("--framer",
-                         dest="framer",
-                         choices=FRAMER_NAMES,
-                         default="auto",
-                         help="How to cut input into records: per JSON object, per email "
-                              "message, per multi-line log message (a stack trace joined "
-                              "to the line it belongs to), or one per line. auto, the "
-                              "default, tries them in that order")
+    parser.add_argument(
+        "--framer",
+        dest="framer",
+        choices=FRAMER_NAMES,
+        default="auto",
+        help="How to cut input into records: per JSON object, per email "
+        "message, per multi-line log message (a stack trace joined "
+        "to the line it belongs to), or one per line. auto, the "
+        "default, tries them in that order",
+    )
 
-    parser.add_argument("--identifiers",
-                         dest="identifiers",
-                         type=int,
-                         default=0,
-                         metavar="N",
-                         help="For JSON records, group those that differ only in an "
-                              "identifier (PROJ-1234, a numeric id string, a UUID or SHA) "
-                              "and list up to N of the identifiers under each group")
+    parser.add_argument(
+        "--identifiers",
+        dest="identifiers",
+        type=int,
+        default=0,
+        metavar="N",
+        help="For JSON records, group those that differ only in an "
+        "identifier (PROJ-1234, a numeric id string, a UUID or SHA) "
+        "and list up to N of the identifiers under each group",
+    )
 
-    parser.add_argument("--fingerprint",
-                         dest="fingerprint",
-                         action="store_true",
-                         default=False,
-                         help="Use fingerprinting to remove certain patterns")
+    parser.add_argument(
+        "--fingerprint",
+        dest="fingerprint",
+        action="store_true",
+        default=False,
+        help="Use fingerprinting to remove certain patterns",
+    )
 
     # Handle modes
-    parser.add_argument("-V", "--version",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_version",
-                         help="Show verbose output")
+    parser.add_argument(
+        "-V",
+        "--version",
+        dest="mode",
+        action="store_const",
+        const="mode_version",
+        help="Show verbose output",
+    )
 
-    parser.add_argument("--hash",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_hash",
-                         help="Show hashes of log files with numbers removed")
+    parser.add_argument(
+        "--hash",
+        dest="mode",
+        action="store_const",
+        const="mode_hash",
+        help="Show hashes of log files with numbers removed",
+    )
 
-    parser.add_argument("--wordcount",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_wordcount",
-                         help="Show word count for given word")
+    parser.add_argument(
+        "--wordcount",
+        dest="mode",
+        action="store_const",
+        const="mode_wordcount",
+        help="Show word count for given word",
+    )
 
-    parser.add_argument("--daemon",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_daemon",
-                         help="show a report of entries from each daemon")
+    parser.add_argument(
+        "--daemon",
+        dest="mode",
+        action="store_const",
+        const="mode_daemon",
+        help="show a report of entries from each daemon",
+    )
 
-    parser.add_argument("--host",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_host",
-                         help="show a report of entries from each host")
+    parser.add_argument(
+        "--host",
+        dest="mode",
+        action="store_const",
+        const="mode_host",
+        help="show a report of entries from each host",
+    )
 
-    parser.add_argument("--sgraph",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_sgraph",
-                         help="graph 60 one-second columns from the first entry")
+    parser.add_argument(
+        "--sgraph",
+        dest="mode",
+        action="store_const",
+        const="mode_sgraph",
+        help="graph 60 one-second columns from the first entry",
+    )
 
-    parser.add_argument("--mgraph",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_mgraph",
-                         help="graph 60 one-minute columns from the first entry")
+    parser.add_argument(
+        "--mgraph",
+        dest="mode",
+        action="store_const",
+        const="mode_mgraph",
+        help="graph 60 one-minute columns from the first entry",
+    )
 
-    parser.add_argument("--hgraph",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_hgraph",
-                         help="graph 24 one-hour columns from the first entry")
+    parser.add_argument(
+        "--hgraph",
+        dest="mode",
+        action="store_const",
+        const="mode_hgraph",
+        help="graph 24 one-hour columns from the first entry",
+    )
 
-    parser.add_argument("--dgraph",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_dgraph",
-                         help="graph 31 one-day columns from the first entry")
+    parser.add_argument(
+        "--dgraph",
+        dest="mode",
+        action="store_const",
+        const="mode_dgraph",
+        help="graph 31 one-day columns from the first entry",
+    )
 
-    parser.add_argument("--mograph",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_mograph",
-                         help="graph 12 one-month columns from the first entry")
+    parser.add_argument(
+        "--mograph",
+        dest="mode",
+        action="store_const",
+        const="mode_mograph",
+        help="graph 12 one-month columns from the first entry",
+    )
 
-    parser.add_argument("--ygraph",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_ygraph",
-                         help="graph 10 one-year columns from the first entry")
+    parser.add_argument(
+        "--ygraph",
+        dest="mode",
+        action="store_const",
+        const="mode_ygraph",
+        help="graph 10 one-year columns from the first entry",
+    )
 
-    parser.add_argument("--graph",
-                         dest="mode",
-                         action="store_const",
-                         const="mode_graph",
-                         help="graph the whole log, choosing the finest column size (1s up to 10y) "
-                              "that fits the terminal width")
+    parser.add_argument(
+        "--graph",
+        dest="mode",
+        action="store_const",
+        const="mode_graph",
+        help="graph the whole log, choosing the finest column size (1s up to 10y) "
+        "that fits the terminal width",
+    )
 
-    parser.add_argument("--span",
-                         dest="span",
-                         type=parse_span,
-                         default=None,
-                         metavar="N{s,m,h,d,mo,y}",
-                         help="graph N one-unit columns from the first entry: s(econds), "
-                              "m(inutes), h(ours), d(ays), mo(nths), y(ears), e.g. 90m or 36h. "
-                              "Implies --graph; at least 6, and must fit the terminal width")
+    parser.add_argument(
+        "--span",
+        dest="span",
+        type=parse_span,
+        default=None,
+        metavar="N{s,m,h,d,mo,y}",
+        help="graph N one-unit columns from the first entry: s(econds), "
+        "m(inutes), h(ours), d(ays), mo(nths), y(ears), e.g. 90m or 36h. "
+        "Implies --graph; at least 6, and must fit the terminal width",
+    )
 
     # -V/--version is the default when no mode flag is given at all, exactly
     # as running plain `petit` always has.
@@ -316,9 +367,7 @@ def print_groups(analysis: Analysis, sample: str) -> None:
     groups small enough that the pattern hides something worth seeing.
     """
     for group in analysis.groups:
-        show_sample = sample == "all" or (
-            sample == "threshold" and group.count <= SAMPLE_THRESHOLD
-        )
+        show_sample = sample == "all" or (sample == "threshold" and group.count <= SAMPLE_THRESHOLD)
         text = group.sample_payloads[0] if show_sample else group.pattern
         print(str(group.count) + ":\t" + text)
         if group.identifiers:
@@ -346,7 +395,10 @@ def mode_hash(args: argparse.Namespace, filename: str) -> None:
 def _run_report_mode(hash_mode: HashMode, args: argparse.Namespace, filename: str) -> None:
     """--wordcount, --daemon and --host: counts per word, daemon or host."""
     analysis = analyze_lines(
-        open_source(filename), source_name=filename, max_samples=1, hash_mode=hash_mode,
+        open_source(filename),
+        source_name=filename,
+        max_samples=1,
+        hash_mode=hash_mode,
         framer=args.framer,
     )
     print_groups(analysis, "none")
@@ -379,6 +431,7 @@ def _run_graph_mode(
     `graph_cls` None is --graph: --span's unit and count if given, otherwise
     whichever fixed graph fits the log.
     """
+
     def draw(log: LogStream) -> GraphHash:
         if args.span is not None:
             unit, count = args.span

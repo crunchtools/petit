@@ -60,12 +60,28 @@ _SECONDS_IN = {"second": 1, "minute": 60, "hour": 3600, "day": 86400}
 # 12), so aligned columns never straddle a boundary. 7 days is a week; 5 and
 # 10 years are what's left once decades are wider than the terminal.
 LADDER: tuple[tuple[str, int], ...] = (
-    ("second", 1), ("second", 5), ("second", 15), ("second", 30),
-    ("minute", 1), ("minute", 5), ("minute", 15), ("minute", 30),
-    ("hour", 1), ("hour", 2), ("hour", 3), ("hour", 6), ("hour", 12),
-    ("day", 1), ("day", 2), ("day", 7),
-    ("month", 1), ("month", 3), ("month", 6),
-    ("year", 1), ("year", 5), ("year", 10),
+    ("second", 1),
+    ("second", 5),
+    ("second", 15),
+    ("second", 30),
+    ("minute", 1),
+    ("minute", 5),
+    ("minute", 15),
+    ("minute", 30),
+    ("hour", 1),
+    ("hour", 2),
+    ("hour", 3),
+    ("hour", 6),
+    ("hour", 12),
+    ("day", 1),
+    ("day", 2),
+    ("day", 7),
+    ("month", 1),
+    ("month", 3),
+    ("month", 6),
+    ("year", 1),
+    ("year", 5),
+    ("year", 10),
 )
 
 
@@ -74,8 +90,7 @@ def _floor(when: datetime.datetime, unit: str) -> datetime.datetime:
     the clock fields to 0."""
     depth = _FIELDS.index(unit) + 1
     year, month, day, hour, minute, second = (
-        getattr(when, field) if i < depth else _FLOOR_VALUES[i]
-        for i, field in enumerate(_FIELDS)
+        getattr(when, field) if i < depth else _FLOOR_VALUES[i] for i, field in enumerate(_FIELDS)
     )
     return datetime.datetime(year, month, day, hour, minute, second)
 
@@ -105,8 +120,9 @@ def _step(start: datetime.datetime, unit: str, i: int) -> datetime.datetime:
         return start.replace(year=start.year + i)
     if unit == "month":
         months = start.month - 1 + i
-        return start.replace(year=start.year + months // MONTHS_PER_YEAR,
-                             month=months % MONTHS_PER_YEAR + 1)
+        return start.replace(
+            year=start.year + months // MONTHS_PER_YEAR, month=months % MONTHS_PER_YEAR + 1
+        )
     return start + datetime.timedelta(**{unit + "s": i})
 
 
@@ -123,7 +139,7 @@ def _offset(start: datetime.datetime, when: datetime.datetime, unit: str) -> int
 def _time_key(when: datetime.datetime, unit: str) -> str:
     # Same shape as the drivers' zero-padded fields joined together, so keys
     # sort in time order.
-    return when.strftime("%Y%m%d%H%M%S")[:4 + 2 * _FIELDS.index(unit)]
+    return when.strftime("%Y%m%d%H%M%S")[: 4 + 2 * _FIELDS.index(unit)]
 
 
 class GraphHash(UserDict[str, int]):
@@ -182,7 +198,11 @@ class GraphHash(UserDict[str, int]):
 
     @classmethod
     def from_histogram(
-        cls, histogram: TimeHistogram, duration: int, step: int, start: datetime.datetime,
+        cls,
+        histogram: TimeHistogram,
+        duration: int,
+        step: int,
+        start: datetime.datetime,
     ) -> GraphHash:
         """The graph of entries a TimeHistogram has already counted.
 
@@ -283,7 +303,6 @@ class GraphHash(UserDict[str, int]):
             graph_min_value = min(graph_min_value, self[key])
 
         if graph_min_value == 0:
-
             # Recalculate
             graph_min_value = self.max_value
             for key in list(self.keys()):
@@ -293,12 +312,14 @@ class GraphHash(UserDict[str, int]):
         # Normalize data
         for key in list(self.keys()):
             if self[key] > 0:
-
                 # Ensure difference between min/max or don't normalize
                 if graph_max_value > graph_min_value:
                     self[key] = ceil(
-                        (float(self[key] - graph_min_value)
-                         / float(graph_max_value - graph_min_value)) * graph_height
+                        (
+                            float(self[key] - graph_min_value)
+                            / float(graph_max_value - graph_min_value)
+                        )
+                        * graph_height
                     )
 
                 # Normalize because of difference between min/max
@@ -312,7 +333,6 @@ class GraphHash(UserDict[str, int]):
         # the most entries with an alphabetical subsort
         for i in reversed(list(range(1, graph_height))):
             for key in sorted(self.keys()):
-
                 if self[key] >= i:
                     sys.stdout.write(char_fill)
                 else:
@@ -325,7 +345,6 @@ class GraphHash(UserDict[str, int]):
         print()
 
         if self.wide:
-
             graph_width = graph_width * 2
 
             # Calculate Positions
@@ -334,7 +353,6 @@ class GraphHash(UserDict[str, int]):
             graph_position["end"] = graph_width - 3
 
         else:
-
             # Calculate Positions
             graph_position["begin"] = 1
             graph_position["middle"] = graph_width // 2
@@ -347,7 +365,6 @@ class GraphHash(UserDict[str, int]):
 
         # Draw numbers at bottom of the screen
         for i in range(1, graph_width):
-
             # Beginning
             if i == graph_position["begin"]:
                 sys.stdout.write(f"{graph_value['begin'] % YEAR_LABEL_MODULUS:02d}")
@@ -370,42 +387,53 @@ class GraphHash(UserDict[str, int]):
 
 class SecondsGraph(GraphHash):
     """--sgraph: 60 one-second columns from the first entry."""
+
     unit = "second"
     duration = 60
 
 
 class MinutesGraph(GraphHash):
     """--mgraph: 60 one-minute columns from the first entry."""
+
     unit = "minute"
     duration = 60
 
 
 class HoursGraph(GraphHash):
     """--hgraph: 24 one-hour columns from the first entry."""
+
     unit = "hour"
     duration = HOURS_PER_DAY
 
 
 class DaysGraph(GraphHash):
     """--dgraph: 31 one-day columns from the first entry."""
+
     unit = "day"
     duration = DAYS_GRAPH_WINDOW
 
 
 class MonthsGraph(GraphHash):
     """--mograph: 12 one-month columns from the first entry's month."""
+
     unit = "month"
     duration = MONTHS_PER_YEAR
 
 
 class YearsGraph(GraphHash):
     """--ygraph: 10 one-year columns from the first entry's year."""
+
     unit = "year"
     duration = 10
 
 
 GRAPHS: tuple[type[GraphHash], ...] = (
-    SecondsGraph, MinutesGraph, HoursGraph, DaysGraph, MonthsGraph, YearsGraph,
+    SecondsGraph,
+    MinutesGraph,
+    HoursGraph,
+    DaysGraph,
+    MonthsGraph,
+    YearsGraph,
 )
 GRAPH_FOR_UNIT: dict[str, type[GraphHash]] = {g.unit: g for g in GRAPHS}
 
@@ -523,6 +551,7 @@ def fit_graph(log: Iterable[LogEntry], columns: int) -> GraphHash:
         needed = _offset(start, _floor(latest, unit), unit) // step + 1
         if needed <= columns:
             return GRAPH_FOR_UNIT[unit].from_histogram(
-                histogram, max(needed, MIN_SPAN), step, earliest)
+                histogram, max(needed, MIN_SPAN), step, earliest
+            )
     unit, step = LADDER[-1]
     return GRAPH_FOR_UNIT[unit].from_histogram(histogram, max(columns, MIN_SPAN), step, earliest)

@@ -11,7 +11,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 _SPEC = importlib.util.spec_from_file_location(
-    "refresh", ROOT / "tools" / "fingerprints" / "refresh.py")
+    "refresh", ROOT / "tools" / "fingerprints" / "refresh.py"
+)
 assert _SPEC is not None
 assert _SPEC.loader is not None
 refresh = importlib.util.module_from_spec(_SPEC)

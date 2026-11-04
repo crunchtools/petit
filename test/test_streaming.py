@@ -42,10 +42,21 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 FIXTURES = sorted(p for p in DATA_DIR.glob("test*.log") if p.stem != "test13")
 
 MODES = [
-    ["--hash"], ["--hash", "--fingerprint"], ["--hash", "--nosample"], ["--hash", "--nofilter"],
-    ["--wordcount"], ["--host"], ["--daemon"],
-    ["--sgraph"], ["--mgraph"], ["--hgraph"], ["--dgraph"], ["--mograph"], ["--ygraph"],
-    ["--graph"], ["--span", "90m"],
+    ["--hash"],
+    ["--hash", "--fingerprint"],
+    ["--hash", "--nosample"],
+    ["--hash", "--nofilter"],
+    ["--wordcount"],
+    ["--host"],
+    ["--daemon"],
+    ["--sgraph"],
+    ["--mgraph"],
+    ["--hgraph"],
+    ["--dgraph"],
+    ["--mograph"],
+    ["--ygraph"],
+    ["--graph"],
+    ["--span", "90m"],
 ]
 
 USERS = ["root", "admin", "scott", "oracle", "test", "ubuntu", "git", "deploy"]
@@ -74,31 +85,46 @@ def sshd_log(lines: int, seed: int = 38) -> Iterator[str]:
         hour, rest = divmod(rest, 3600)
         minute, second = divmod(rest, 60)
         text = rng.choice(MESSAGES).format(
-            u=rng.choice(USERS), a=rng.randint(0, 255), b=rng.randint(0, 255),
-            c=rng.randint(0, 255), p=rng.randint(1024, 65535),
+            u=rng.choice(USERS),
+            a=rng.randint(0, 255),
+            b=rng.randint(0, 255),
+            c=rng.randint(0, 255),
+            p=rng.randint(1024, 65535),
         )
-        yield (f"Sep {1 + day % 28:2d} {hour:02d}:{minute:02d}:{second:02d} host01 "
-               f"sshd[{rng.randint(1000, 1400)}]: {text}\n")
+        yield (
+            f"Sep {1 + day % 28:2d} {hour:02d}:{minute:02d}:{second:02d} host01 "
+            f"sshd[{rng.randint(1000, 1400)}]: {text}\n"
+        )
 
 
 def run_petit(*args: str, stdin: str | None = None) -> subprocess.CompletedProcess[str]:
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"), COLUMNS="120")
     return subprocess.run(
         [sys.executable, "-m", "petit.cli", *args],
-        input=stdin, capture_output=True, text=True, env=env, check=False,
+        input=stdin,
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
     )
 
 
 def summary(analysis):
     return (
         [(g.pattern, g.count) for g in analysis.groups],
-        analysis.driver, analysis.degraded, analysis.framer,
-        analysis.lines_in, analysis.lines_grouped, analysis.records_in,
-        analysis.records_grouped, analysis.fingerprints_matched,
+        analysis.driver,
+        analysis.degraded,
+        analysis.framer,
+        analysis.lines_in,
+        analysis.lines_grouped,
+        analysis.records_in,
+        analysis.records_grouped,
+        analysis.fingerprints_matched,
     )
 
 
 # --- every way in gives the same answer ------------------------------------
+
 
 @pytest.mark.parametrize("path", FIXTURES, ids=lambda p: p.stem)
 @pytest.mark.parametrize("flags", MODES, ids=lambda f: "".join(f).replace("--", "-"))
@@ -118,8 +144,10 @@ def test_every_library_entry_point_agrees(path: Path, hash_mode) -> None:
         assert summary(analyze_lines(handle, hash_mode=hash_mode)) == expected
         assert not handle.closed, "voting stops reading early and must not close the file"
     assert summary(analyze_lines(text.splitlines(keepends=True), hash_mode=hash_mode)) == expected
-    assert summary(analyze_lines(iter(text.splitlines(keepends=True)),
-                                 hash_mode=hash_mode)) == expected
+    assert (
+        summary(analyze_lines(iter(text.splitlines(keepends=True)), hash_mode=hash_mode))
+        == expected
+    )
 
 
 @pytest.mark.parametrize("path", FIXTURES, ids=lambda p: p.stem)
@@ -145,11 +173,14 @@ def test_universal_newlines_on_a_pipe() -> None:
 
 
 def analyze_text_output(text: str) -> str:
-    return "".join(f"{g.count}:\t{g.sample_payloads[0] if g.count <= 3 else g.pattern}\n"
-                   for g in analyze_text(text, max_samples=1).groups)
+    return "".join(
+        f"{g.count}:\t{g.sample_payloads[0] if g.count <= 3 else g.pattern}\n"
+        for g in analyze_text(text, max_samples=1).groups
+    )
 
 
 # --- a pipe longer than the head window --------------------------------------
+
 
 @pytest.fixture(scope="module")
 def big_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
@@ -161,8 +192,11 @@ def big_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return path
 
 
-@pytest.mark.parametrize("flags", [["--hash"], ["--daemon"], ["--wordcount"], ["--mgraph"],
-                                   ["--graph"]], ids=lambda f: f[0])
+@pytest.mark.parametrize(
+    "flags",
+    [["--hash"], ["--daemon"], ["--wordcount"], ["--mgraph"], ["--graph"]],
+    ids=lambda f: f[0],
+)
 def test_a_pipe_past_the_head_window_reads_like_the_file(big_log: Path, flags) -> None:
     by_path = run_petit(*flags, str(big_log))
     by_pipe = run_petit(*flags, stdin=big_log.read_text())
@@ -181,8 +215,10 @@ def test_a_tiny_head_window_still_counts_every_line(path: Path, monkeypatch) -> 
     monkeypatch.setattr("petit.CrunchLog.HEAD_CHARS", 200)
     streamed = analyze_lines(iter(text.splitlines(keepends=True)))
     assert streamed.lines_in == expected.lines_in
-    if (streamed.framer, streamed.driver) == (expected.framer, expected.driver) \
-            and not streamed.degraded:
+    if (streamed.framer, streamed.driver) == (
+        expected.framer,
+        expected.driver,
+    ) and not streamed.degraded:
         assert summary(streamed) == summary(expected)
 
 
@@ -227,8 +263,13 @@ print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
 def peak_kb(lines: int, mode: str) -> int:
     script = PEAK_SCRIPT.format(test_dir=str(Path(__file__).parent))
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
-    result = subprocess.run([sys.executable, "-c", script, str(lines), mode],
-                            capture_output=True, text=True, env=env, check=True)
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(lines), mode],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=True,
+    )
     return int(result.stdout)
 
 
@@ -245,8 +286,10 @@ def test_memory_does_not_grow_with_the_input(mode: str) -> None:
 
 # --- the pieces that make streaming exact ----------------------------------
 
+
 def _old_message_starts(buf: list[str]) -> list[int]:
     """MessageFramer's whole-buffer rule before streaming, as reference."""
+
     def header_block_at(i: int) -> bool:
         fields, known = 0, False
         for line in buf[i:]:
@@ -254,8 +297,19 @@ def _old_message_starts(buf: list[str]) -> list[int]:
             if match:
                 fields += 1
                 known = known or match.group(1).lower() in {
-                    "from", "to", "cc", "subject", "date", "message-id", "received",
-                    "reply-to", "in-reply-to", "references", "return-path", "mime-version"}
+                    "from",
+                    "to",
+                    "cc",
+                    "subject",
+                    "date",
+                    "message-id",
+                    "received",
+                    "reply-to",
+                    "in-reply-to",
+                    "references",
+                    "return-path",
+                    "mime-version",
+                }
             elif not (fields and line[:1] in (" ", "\t")):
                 break
         return fields >= 2 and known
@@ -266,8 +320,19 @@ def _old_message_starts(buf: list[str]) -> list[int]:
 
 
 def test_streamed_message_starts_match_the_whole_buffer_rule() -> None:
-    vocab = ["From a@b Sat\n", "From: x@y\n", "Subject: hi\n", "X-Foo: 1\n", "To: z\n",
-             " cont\n", "\tcont\n", "\n", "  \n", "body text\n", "a: b\n"]
+    vocab = [
+        "From a@b Sat\n",
+        "From: x@y\n",
+        "Subject: hi\n",
+        "X-Foo: 1\n",
+        "To: z\n",
+        " cont\n",
+        "\tcont\n",
+        "\n",
+        "  \n",
+        "body text\n",
+        "a: b\n",
+    ]
     rng = random.Random(5)
     for _ in range(5000):
         buf = [rng.choice(vocab) for _ in range(rng.randint(0, 30))]
@@ -308,9 +373,15 @@ def test_one_pass_graph_matches_the_two_pass_graph(span_seconds: int, columns: i
     for when in times:
         entry = LogEntry("")
         entry.year, entry.month, entry.day = (
-            f"{when.year:04d}", f"{when.month:02d}", f"{when.day:02d}")
+            f"{when.year:04d}",
+            f"{when.month:02d}",
+            f"{when.day:02d}",
+        )
         entry.hour, entry.minute, entry.second = (
-            f"{when.hour:02d}", f"{when.minute:02d}", f"{when.second:02d}")
+            f"{when.hour:02d}",
+            f"{when.minute:02d}",
+            f"{when.second:02d}",
+        )
         entries.append(entry)
     assert dict(fit_graph(entries, columns)) == _old_fit_graph(entries, columns)
 

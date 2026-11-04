@@ -100,6 +100,7 @@ def _loads_or_none(text: str) -> Any:
     except ValueError:
         return None
 
+
 @dataclass(frozen=True)
 class Claim:
     """A framer's verdict on a whole input: how to cut it into records, and
@@ -167,8 +168,11 @@ def _json_claims(buf: list[str]) -> bool:
         return False
     if stripped[0] == "[":
         value = _loads_or_none(stripped)
-        return isinstance(value, list) and bool(value) \
+        return (
+            isinstance(value, list)
+            and bool(value)
             and all(isinstance(item, dict) for item in value)
+        )
     return all(isinstance(_loads_or_none(line), dict) for line in buf if line.strip())
 
 
@@ -249,10 +253,22 @@ class JsonFramer(Framer):
 HEADER_FIELD = re.compile(r"([!-9;-~]{1,76}):")
 
 # A header block must name at least one of these to count as a message.
-_MESSAGE_HEADERS = frozenset({
-    "from", "to", "cc", "subject", "date", "message-id", "received",
-    "reply-to", "in-reply-to", "references", "return-path", "mime-version",
-})
+_MESSAGE_HEADERS = frozenset(
+    {
+        "from",
+        "to",
+        "cc",
+        "subject",
+        "date",
+        "message-id",
+        "received",
+        "reply-to",
+        "in-reply-to",
+        "references",
+        "return-path",
+        "mime-version",
+    }
+)
 
 
 class _HeaderStarts:
@@ -409,13 +425,13 @@ class MessageFramer(Framer):
             line_count += 1
             for start in scanner.feed(line):
                 if start > begin:
-                    yield Record(buf[:start - begin], begin, start)
-                    buf = buf[start - begin:]
+                    yield Record(buf[: start - begin], begin, start)
+                    buf = buf[start - begin :]
                     begin = start
         for start in scanner.finish():
             if start > begin:
-                yield Record(buf[:start - begin], begin, start)
-                buf = buf[start - begin:]
+                yield Record(buf[: start - begin], begin, start)
+                buf = buf[start - begin :]
                 begin = start
         yield Record(buf, begin, line_count)
 
@@ -434,7 +450,8 @@ _LEVEL = r"(?:TRACE|DEBUG|INFO|NOTICE|WARN|WARNING|ERROR|FATAL|CRITICAL|SEVERE)"
 # starts on a line that begins with one; see MultilineFramer. Every pattern
 # is character classes and bounded repeats, so matching is linear.
 HEAD_PATTERNS: dict[str, re.Pattern[str]] = {
-    name: re.compile(pattern) for name, pattern in {
+    name: re.compile(pattern)
+    for name, pattern in {
         # Sep 23 10:00:00 — syslog, secure, journalctl -o short / short-precise
         "bsd": _PRI + r"[A-Z][a-z]{2} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2}",
         # YYYY-MM-DDThh:mm:ss or YYYY-MM-DD hh:mm:ss — RFC 3339/5424, rsyslog,

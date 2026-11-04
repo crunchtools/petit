@@ -151,8 +151,7 @@ def _resolve_driver(name: str | None) -> type[_drivers.LogEntry] | None:
     if name is None:
         return None
     driver = getattr(_drivers, name, None)
-    if driver is None or not isinstance(driver, type) \
-            or not issubclass(driver, _drivers.LogEntry):
+    if driver is None or not isinstance(driver, type) or not issubclass(driver, _drivers.LogEntry):
         raise PetitError("unknown driver: " + str(name))
     return driver
 
@@ -316,9 +315,9 @@ def _analyze(
     def group(log: LogStream) -> SuperHash:
         if hash_mode == "auto":
             return SuperHash.manufacture(
-                log, policy, max_record_chars, max_samples, max_identifiers)
-        return _HASH_MODES[hash_mode](
-            log, policy, max_record_chars, max_samples, max_identifiers)
+                log, policy, max_record_chars, max_samples, max_identifiers
+            )
+        return _HASH_MODES[hash_mode](log, policy, max_record_chars, max_samples, max_identifiers)
 
     hashed = stream.build(group)
     matched = hashed.fingerprint() if collapse_fingerprints else []
@@ -327,16 +326,18 @@ def _analyze(
     for key, value in hashed.items():
         members = value[1][:max_samples]
         fields, rows = hashed.identifiers.get(key, ((), []))
-        groups.append(Group(
-            pattern=str(key),
-            count=value[0],
-            samples=[_render(entry) for entry in members],
-            sample_lines=[getattr(entry, "line_number", -1) for entry in members],
-            sample_payloads=[_payload(entry) for entry in members],
-            sample_spans=[entry.span for entry in members],
-            identifier_fields=list(fields),
-            identifiers=[list(row) for row in rows],
-        ))
+        groups.append(
+            Group(
+                pattern=str(key),
+                count=value[0],
+                samples=[_render(entry) for entry in members],
+                sample_lines=[getattr(entry, "line_number", -1) for entry in members],
+                sample_payloads=[_payload(entry) for entry in members],
+                sample_spans=[entry.span for entry in members],
+                identifier_fields=list(fields),
+                identifiers=[list(row) for row in rows],
+            )
+        )
     groups.sort(key=lambda g: (-g.count, g.pattern))
 
     return Analysis(

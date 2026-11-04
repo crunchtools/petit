@@ -132,14 +132,37 @@ class TestWordStopwords:
         assert len(words) > 150
         assert [w for w in words if not self.FILTER.bleach(w)] == []
 
-    @pytest.mark.parametrize("word", ["I", "The", "there.", "___", "Stopped", "(of)", "--",
-                                      "addr=?",
-                                      "5e307723-75a3-4ee9-912d-a813e8cfe18f"])
+    @pytest.mark.parametrize(
+        "word",
+        [
+            "I",
+            "The",
+            "there.",
+            "___",
+            "Stopped",
+            "(of)",
+            "--",
+            "addr=?",
+            "5e307723-75a3-4ee9-912d-a813e8cfe18f",
+        ],
+    )
     def test_stopped(self, word):
         assert self.FILTER.bleach(word)
 
-    @pytest.mark.parametrize("word", ["target.service", "command", "unreachable:", "ACPI",
-                                      "NVMe", "thermal", "shutdown", "i#", "a#"])
+    @pytest.mark.parametrize(
+        "word",
+        [
+            "target.service",
+            "command",
+            "unreachable:",
+            "ACPI",
+            "NVMe",
+            "thermal",
+            "shutdown",
+            "i#",
+            "a#",
+        ],
+    )
     def test_kept_whole(self, word):
         assert self.FILTER.scrub(word) == word
 
@@ -153,12 +176,15 @@ class TestDaemonStopwords:
     def test_pseudo_daemon_is_dropped(self, field):
         assert self.FILTER.bleach(field)
 
-    @pytest.mark.parametrize(("field", "key"), [
-        ("lastlog[12]:", "lastlog[#]:"),
-        ("exiting-helper:", "exiting-helper:"),
-        ("ISOmount[3]:", "ISOmount[#]:"),
-        ("dm--event[4]:", "dm--event[#]:"),
-    ])
+    @pytest.mark.parametrize(
+        ("field", "key"),
+        [
+            ("lastlog[12]:", "lastlog[#]:"),
+            ("exiting-helper:", "exiting-helper:"),
+            ("ISOmount[3]:", "ISOmount[#]:"),
+            ("dm--event[4]:", "dm--event[#]:"),
+        ],
+    )
     def test_longer_field_is_kept(self, field, key):
         assert self.FILTER.scrub(field) == key
 
@@ -190,10 +216,12 @@ def mixed_log(syslog_fraction=0.7, lines=40):
     application logs and for tool output that interleaves JSON with prose."""
     k = int(lines * syslog_fraction)
     return "\n".join(
-        [f"Sep 19 04:00:{i:02d} host01 sshd[{i}]: Accepted publickey for scott "
-         f"from 10.0.0.{i} port 22" for i in range(k)]
-        + ["an ordinary prose sentence slipped into the stream here"
-           for _ in range(lines - k)]
+        [
+            f"Sep 19 04:00:{i:02d} host01 sshd[{i}]: Accepted publickey for scott "
+            f"from 10.0.0.{i} port 22"
+            for i in range(k)
+        ]
+        + ["an ordinary prose sentence slipped into the stream here" for _ in range(lines - k)]
     )
 
 
@@ -209,10 +237,7 @@ class TestDeterminism:
 
     def test_grouping_is_stable_across_calls(self):
         text = mixed_log()
-        shapes = {
-            tuple((g.pattern, g.count) for g in hash_text(text))
-            for _ in range(50)
-        }
+        shapes = {tuple((g.pattern, g.count) for g in hash_text(text)) for _ in range(50)}
         assert len(shapes) == 1
 
     def test_stable_at_every_mixture(self):
@@ -243,9 +268,7 @@ class TestMixedInput:
         text = secure_log() + "\nan ordinary prose sentence in the stream"
         groups = hash_text(text)
         assert any(
-            "ordinary prose sentence" in sample
-            for group in groups
-            for sample in group.samples
+            "ordinary prose sentence" in sample for group in groups for sample in group.samples
         )
 
     def test_strict_restores_the_old_raising_behaviour(self):
@@ -275,7 +298,7 @@ class TestDriverOverride:
         assert len(pinned.groups) == 50
 
     def test_detected_secure_log_keeps_the_user_name(self):
-        """"Invalid user.*" used to swallow the name a client chose, so an
+        """ "Invalid user.*" used to swallow the name a client chose, so an
         odd one merged into the crowd. The rule now collapses only the
         source address after it."""
         boilerplate = "\n".join(
@@ -411,8 +434,7 @@ class TestPatternReplacements:
     one that only says something was there."""
 
     TEXT = "\n".join(
-        f"2026-09-19T04:00:{i:02d} host sshd[{i}]: login from 10.0.0.{i}"
-        for i in range(30)
+        f"2026-09-19T04:00:{i:02d} host sshd[{i}]: login from 10.0.0.{i}" for i in range(30)
     )
     RULES: ClassVar[list[tuple[str, str]]] = [
         (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", "<TS>"),
@@ -431,7 +453,8 @@ class TestPatternReplacements:
 
     def test_bare_and_paired_rules_can_be_mixed(self):
         groups = hash_text(
-            self.TEXT, driver="RawEntry",
+            self.TEXT,
+            driver="RawEntry",
             stopwords=[(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "<IP>"), r"\d+"],
         )
         assert groups[0].pattern == "#-#-#T#:#:# host sshd[#]: login from <IP>"
@@ -554,8 +577,9 @@ class TestSiteLocalFingerprints:
         monkeypatch.setattr(
             LogHash, "search_prefixes", lambda _kind: [packaged, str(tmp_path) + "/"]
         )
-        result = analyze_text(corpus + "\nSep 22 10:01:00 host01 other[2]: unrelated",
-                              collapse_fingerprints=True)
+        result = analyze_text(
+            corpus + "\nSep 22 10:01:00 host01 other[2]: unrelated", collapse_fingerprints=True
+        )
         assert result.fingerprints_matched == ["custom-event.fp"]
 
 
@@ -581,8 +605,9 @@ class TestFingerprintVote:
     claimed each other's reboots — rhel4 took a rhel5 reboot, ubuntu10.04 an
     ubuntu9.04 one."""
 
-    PACKAGED = sorted(os.listdir(os.path.join(os.path.dirname(LogHash.__file__),
-                                              "data", "fingerprints")))
+    PACKAGED = sorted(
+        os.listdir(os.path.join(os.path.dirname(LogHash.__file__), "data", "fingerprints"))
+    )
 
     @staticmethod
     def corpus_text(name):
@@ -604,8 +629,14 @@ class TestFingerprintVote:
 
     # ubuntu10.04 is RSyslog's format and the rest classic syslog. A log
     # that mixes the two is read as raw text, which none of them match.
-    @pytest.mark.parametrize(("a", "b"), list(itertools.combinations(
-        [name for name in PACKAGED if name != "ubuntu10.04-reboot.fp"], 2)))
+    @pytest.mark.parametrize(
+        ("a", "b"),
+        list(
+            itertools.combinations(
+                [name for name in PACKAGED if name != "ubuntu10.04-reboot.fp"], 2
+            )
+        ),
+    )
     def test_two_reboots_in_one_log_both_collapse(self, a, b):
         text = self.corpus_text(a) + self.corpus_text(b)
         result = analyze_text(text, collapse_fingerprints=True)
@@ -613,53 +644,72 @@ class TestFingerprintVote:
 
     def test_small_corpus_inside_a_large_one_keeps_its_own_log(self, tmp_path, monkeypatch):
         """First-fit gave this log to the large corpus: it clears 31% of it."""
-        self.only(monkeypatch, tmp_path,
-                  large=_event("common", range(400)),
-                  small=_event("common", range(150)) + "\n" + _event("own", range(20)))
+        self.only(
+            monkeypatch,
+            tmp_path,
+            large=_event("common", range(400)),
+            small=_event("common", range(150)) + "\n" + _event("own", range(20)),
+        )
         log = _event("common", range(150)) + "\n" + _event("own", range(20))
         assert analyze_text(log, collapse_fingerprints=True).fingerprints_matched == ["small.fp"]
 
     def test_large_corpus_keeps_its_own_log(self, tmp_path, monkeypatch):
-        self.only(monkeypatch, tmp_path,
-                  large=_event("common", range(400)),
-                  small=_event("common", range(150)) + "\n" + _event("own", range(20)))
+        self.only(
+            monkeypatch,
+            tmp_path,
+            large=_event("common", range(400)),
+            small=_event("common", range(150)) + "\n" + _event("own", range(20)),
+        )
         log = _event("common", range(400))
         assert analyze_text(log, collapse_fingerprints=True).fingerprints_matched == ["large.fp"]
 
     def test_superset_log_is_not_tied_with_its_subset(self, tmp_path, monkeypatch):
         """A corpus wholly inside another is fully covered by the larger
         one's log. Scoring coverage alone calls that a tie."""
-        self.only(monkeypatch, tmp_path,
-                  large=_event("common", range(400)),
-                  subset=_event("common", range(150)))
+        self.only(
+            monkeypatch,
+            tmp_path,
+            large=_event("common", range(400)),
+            subset=_event("common", range(150)),
+        )
         whole = analyze_text(_event("common", range(400)), collapse_fingerprints=True)
         part = analyze_text(_event("common", range(150)), collapse_fingerprints=True)
         assert whole.fingerprints_matched == ["large.fp"]
         assert part.fingerprints_matched == ["subset.fp"]
 
     def test_twins_are_told_apart_by_their_own_lines(self, tmp_path, monkeypatch):
-        self.only(monkeypatch, tmp_path,
-                  el9=_event("common", range(300)) + "\n" + _event("nine", range(15)),
-                  el10=_event("common", range(300)) + "\n" + _event("ten", range(15)))
+        self.only(
+            monkeypatch,
+            tmp_path,
+            el9=_event("common", range(300)) + "\n" + _event("nine", range(15)),
+            el10=_event("common", range(300)) + "\n" + _event("ten", range(15)),
+        )
         log = _event("common", range(300)) + "\n" + _event("nine", range(15))
         assert analyze_text(log, collapse_fingerprints=True).fingerprints_matched == ["el9.fp"]
 
     def test_twins_with_nothing_to_tell_them_apart_are_both_named(self, tmp_path, monkeypatch):
         """An honest "one of these two" beats a confident wrong answer."""
-        self.only(monkeypatch, tmp_path,
-                  el9=_event("common", range(300)) + "\n" + _event("nine", range(3)),
-                  el10=_event("common", range(300)) + "\n" + _event("ten", range(3)))
+        self.only(
+            monkeypatch,
+            tmp_path,
+            el9=_event("common", range(300)) + "\n" + _event("nine", range(3)),
+            el10=_event("common", range(300)) + "\n" + _event("ten", range(3)),
+        )
         log = _event("common", range(300)) + "\n" + _event("nine", range(3))
         result = analyze_text(log, collapse_fingerprints=True)
         assert result.fingerprints_matched == ["el10.fp|el9.fp"]
         assert any(g.pattern == "el10.fp|el9.fp" for g in result.groups)
 
     def test_both_twins_rebooting_collapse_separately(self, tmp_path, monkeypatch):
-        self.only(monkeypatch, tmp_path,
-                  el9=_event("common", range(300)) + "\n" + _event("nine", range(15)),
-                  el10=_event("common", range(300)) + "\n" + _event("ten", range(15)))
-        log = "\n".join([_event("common", range(300)), _event("nine", range(15)),
-                         _event("ten", range(15))])
+        self.only(
+            monkeypatch,
+            tmp_path,
+            el9=_event("common", range(300)) + "\n" + _event("nine", range(15)),
+            el10=_event("common", range(300)) + "\n" + _event("ten", range(15)),
+        )
+        log = "\n".join(
+            [_event("common", range(300)), _event("nine", range(15)), _event("ten", range(15))]
+        )
         result = analyze_text(log, collapse_fingerprints=True)
         assert sorted(result.fingerprints_matched) == ["el10.fp", "el9.fp"]
 
@@ -667,13 +717,20 @@ class TestFingerprintVote:
         """Weights belong to the whole set of corpora, so a cached set must
         not outlive a corpus added beside it."""
         log = _event("common", range(300))
-        self.only(monkeypatch, tmp_path,
-                  el9=_event("common", range(300)) + "\n" + _event("nine", range(3)))
+        self.only(
+            monkeypatch,
+            tmp_path,
+            el9=_event("common", range(300)) + "\n" + _event("nine", range(3)),
+        )
         assert analyze_text(log, collapse_fingerprints=True).fingerprints_matched == ["el9.fp"]
-        self.only(monkeypatch, tmp_path,
-                  el10=_event("common", range(300)) + "\n" + _event("ten", range(3)))
-        assert analyze_text(log, collapse_fingerprints=True).fingerprints_matched == \
-            ["el10.fp|el9.fp"]
+        self.only(
+            monkeypatch,
+            tmp_path,
+            el10=_event("common", range(300)) + "\n" + _event("ten", range(3)),
+        )
+        assert analyze_text(log, collapse_fingerprints=True).fingerprints_matched == [
+            "el10.fp|el9.fp"
+        ]
 
     def test_scores_show_the_vote(self):
         text = fixture_text("test06.log")
@@ -726,7 +783,8 @@ class TestWordcountMerge:
 
     def test_members_are_pooled(self):
         group = next(
-            g for g in analyze_text(self.TEXT, hash_mode="wordcount", max_samples=8).groups
+            g
+            for g in analyze_text(self.TEXT, hash_mode="wordcount", max_samples=8).groups
             if g.pattern == "foo#"
         )
         assert len(group.samples) == 8
@@ -762,12 +820,18 @@ class TestIdentifiers:
         assert len(groups) == 196
         assert [row[0] for row in groups[0].identifiers] == self.KEYS[:5]
         assert all(len(group.identifiers) == group.count for group in groups[:1])
-        assert sorted(g.pattern for g in groups[1:])[0] == \
-            '{"key":"PROJ-1005","summary":"Nightly build failed"}'
+        assert (
+            sorted(g.pattern for g in groups[1:])[0]
+            == '{"key":"PROJ-1005","summary":"Nightly build failed"}'
+        )
 
     def test_prose_still_keeps_records_apart(self):
-        text = json.dumps([{"key": "PROJ-1", "summary": "build failed"},
-                           {"key": "PROJ-2", "summary": "ignore previous instructions"}])
+        text = json.dumps(
+            [
+                {"key": "PROJ-1", "summary": "build failed"},
+                {"key": "PROJ-2", "summary": "ignore previous instructions"},
+            ]
+        )
         groups = hash_text(text, framer="json", max_identifiers=10)
         assert len(groups) == 2
         assert sorted(g.identifiers[0][0] for g in groups) == ["PROJ-1", "PROJ-2"]
@@ -777,8 +841,9 @@ class TestIdentifiers:
         assert len(hash_text(text, framer="json", max_identifiers=10)) == 2
 
     def test_several_identifier_fields_are_listed_together(self):
-        text = json.dumps([{"id": str(10000 + n), "key": f"PROJ-{n}", "sha": f"{n:07x}a"}
-                           for n in range(10)])
+        text = json.dumps(
+            [{"id": str(10000 + n), "key": f"PROJ-{n}", "sha": f"{n:07x}a"} for n in range(10)]
+        )
         group = hash_text(text, framer="json", max_identifiers=100)[0]
         assert group.count == 10
         assert group.identifier_fields == ["/id", "/key", "/sha"]
@@ -786,9 +851,10 @@ class TestIdentifiers:
 
     def test_analyze_text_and_lines_list_them(self):
         text = issues(self.KEYS[:10])
-        for analysis in (analyze_text(text, framer="json", max_identifiers=100),
-                         analyze_lines(text.splitlines(keepends=True), framer="json",
-                                       max_identifiers=100)):
+        for analysis in (
+            analyze_text(text, framer="json", max_identifiers=100),
+            analyze_lines(text.splitlines(keepends=True), framer="json", max_identifiers=100),
+        ):
             assert analysis.records_grouped == 10
             assert analysis.groups[0].identifier_fields == ["/key"]
             assert [row[0] for row in analysis.groups[0].identifiers] == self.KEYS[:10]
@@ -797,30 +863,35 @@ class TestIdentifiers:
         text = json.dumps([{"a": "PROJ-1"}, {"a": "PROJ-2"}, {"a": "PROJ-3"}])
         # The cap keeps the third whole; this filter would fold it straight
         # back into the listed group.
-        groups = hash_text(text, framer="json", max_identifiers=2,
-                           stopwords=[(r'<ID>|"PROJ-\d"', "V")])
+        groups = hash_text(
+            text, framer="json", max_identifiers=2, stopwords=[(r'<ID>|"PROJ-\d"', "V")]
+        )
         assert all(len(group.identifiers) in (0, group.count) for group in groups)
         assert sum(group.count for group in groups) == 3
 
     def test_a_record_with_no_identifiers_never_joins_a_listed_group(self):
         text = json.dumps([{"a": "PROJ-1"}, {"a": "PROJ-2"}, {"a": "plain"}])
-        groups = hash_text(text, framer="json", max_identifiers=10,
-                           stopwords=[(r'<ID>|"plain"', "V")])
+        groups = hash_text(
+            text, framer="json", max_identifiers=10, stopwords=[(r'<ID>|"plain"', "V")]
+        )
         assert sorted((g.count, len(g.identifiers)) for g in groups) == [(1, 0), (2, 2)]
         assert any(g.pattern.endswith("<UNLISTED>") for g in groups)
 
     def test_a_listed_record_never_joins_an_unlisted_group(self):
         text = json.dumps([{"a": "plain"}, {"a": "PROJ-1"}])
-        groups = hash_text(text, framer="json", max_identifiers=10,
-                           stopwords=[(r'<ID>|"plain"', "V")])
+        groups = hash_text(
+            text, framer="json", max_identifiers=10, stopwords=[(r'<ID>|"plain"', "V")]
+        )
         assert len(groups) == 2
         assert all(group.identifiers == [] for group in groups)
 
     def test_collapsing_fingerprints_leaves_listed_groups_alone(self):
         text = issues(self.KEYS)
         plain = hash_text(text, framer="json", max_identifiers=1000)
-        assert hash_text(text, framer="json", max_identifiers=1000,
-                         collapse_fingerprints=True) == plain
+        assert (
+            hash_text(text, framer="json", max_identifiers=1000, collapse_fingerprints=True)
+            == plain
+        )
 
     def test_line_input_lists_identifiers_too(self):
         lines = [json.dumps({"key": key, "summary": "x"}) + "\n" for key in self.KEYS[:10]]
@@ -838,8 +909,12 @@ class TestIdentifiers:
         text = json.dumps([{"a": "PROJ-1", "b": "x"}, {"a": "x", "b": "PROJ-2"}])
         # Folds the two keys together, so the second record's fields (/b)
         # would otherwise land under the first's (/a).
-        groups = hash_text(text, framer="json", max_identifiers=10,
-                           stopwords=[(r'"a"|"b"', '"k"'), (r'<ID>|"x"', "V")])
+        groups = hash_text(
+            text,
+            framer="json",
+            max_identifiers=10,
+            stopwords=[(r'"a"|"b"', '"k"'), (r'<ID>|"x"', "V")],
+        )
         for group in groups:
             assert all(len(row) == len(group.identifier_fields) for row in group.identifiers)
         assert sum(len(group.identifiers) for group in groups) == 1
@@ -850,17 +925,36 @@ class TestIdentifiers:
         assert len(groups) == 10
         assert all(group.identifiers == [] for group in groups)
 
-    @pytest.mark.parametrize("value", [
-        "10234", "PROJ-1234", "gh-12", "#42", "3f2c9a1e-1b2c-4d5e-8f90-0123456789ab",
-        "adddc55", "4731ad4e9f",
-    ])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "10234",
+            "PROJ-1234",
+            "gh-12",
+            "#42",
+            "3f2c9a1e-1b2c-4d5e-8f90-0123456789ab",
+            "adddc55",
+            "4731ad4e9f",
+        ],
+    )
     def test_identifier_shapes(self, value):
         assert pull_identifiers({"v": value})[2] == (value,)
 
-    @pytest.mark.parametrize("value", [
-        "done", "Nightly build failed", "deadbeef", "2026-09-22", "PROJ-1 and more",
-        "PROJ-" + "1" * 13, "a" * 65, "1" * 21, "-5", "1.5",
-    ])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "done",
+            "Nightly build failed",
+            "deadbeef",
+            "2026-09-22",
+            "PROJ-1 and more",
+            "PROJ-" + "1" * 13,
+            "a" * 65,
+            "1" * 21,
+            "-5",
+            "1.5",
+        ],
+    )
     def test_not_identifiers(self, value):
         assert pull_identifiers({"v": value}) == ({"v": value}, (), ())
 
@@ -874,7 +968,8 @@ class TestIdentifiers:
 
     def test_fields_are_json_pointers_in_sorted_key_order(self):
         masked, fields, values = pull_identifiers(
-            {"z": "PROJ-1", "a/b": [{"~": "#2"}], "m": "text"})
+            {"z": "PROJ-1", "a/b": [{"~": "#2"}], "m": "text"}
+        )
         assert fields == ("/a~1b/0/~0", "/z")
         assert values == ("#2", "PROJ-1")
         assert list(masked) == ["a/b", "m", "z"]
@@ -899,6 +994,7 @@ def test_library_leaves_root_logger_alone():
         hash_text(text)
         print(logging.getLogger().handlers)
     """)
-    child = subprocess.run([sys.executable, "-c", script],
-                           check=True, capture_output=True, text=True)
+    child = subprocess.run(
+        [sys.executable, "-c", script], check=True, capture_output=True, text=True
+    )
     assert child.stdout.strip() == "[]"

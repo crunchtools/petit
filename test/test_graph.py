@@ -27,8 +27,12 @@ from petit.LogGraph import (
 
 def test_months_step_on_the_calendar_across_a_year_boundary() -> None:
     start = datetime.datetime(2025, 11, 1)
-    assert [_step(start, "month", i).strftime("%Y-%m") for i in (0, 1, 2, 11)] == \
-        ["2025-11", "2025-12", "2026-01", "2026-10"]
+    assert [_step(start, "month", i).strftime("%Y-%m") for i in (0, 1, 2, 11)] == [
+        "2025-11",
+        "2025-12",
+        "2026-01",
+        "2026-10",
+    ]
 
 
 def test_years_step_on_the_calendar_across_leap_days() -> None:
@@ -78,8 +82,14 @@ def _real_timestamps(log: CrunchLog) -> int:
     count = 0
     for entry in log:
         try:
-            when = datetime.datetime(int(entry.year), int(entry.month), int(entry.day),
-                                     int(entry.hour), int(entry.minute), int(entry.second))
+            when = datetime.datetime(
+                int(entry.year),
+                int(entry.month),
+                int(entry.day),
+                int(entry.hour),
+                int(entry.minute),
+                int(entry.second),
+            )
         except ValueError:
             continue
         count += when.year != SENTINEL_YEAR
@@ -131,15 +141,21 @@ def test_one_unit_columns_count_like_the_fixed_graphs(path: Path) -> None:
 _dt = datetime.datetime
 
 
-@pytest.mark.parametrize(("unit", "step", "first", "start"), [
-    ("minute", 15, _dt(2026, 9, 20, 10, 7, 12), _dt(2026, 9, 20, 10, 0)),
-    ("hour", 2, _dt(2026, 9, 20, 13, 40), _dt(2026, 9, 20, 12, 0)),
-    ("month", 3, _dt(2026, 5, 17), _dt(2026, 4, 1)),
-    ("year", 5, _dt(2027, 3, 1), _dt(2025, 1, 1)),
-    ("day", 7, _dt(2026, 9, 20, 13, 40), _dt(2026, 9, 20)),
-])
+@pytest.mark.parametrize(
+    ("unit", "step", "first", "start"),
+    [
+        ("minute", 15, _dt(2026, 9, 20, 10, 7, 12), _dt(2026, 9, 20, 10, 0)),
+        ("hour", 2, _dt(2026, 9, 20, 13, 40), _dt(2026, 9, 20, 12, 0)),
+        ("month", 3, _dt(2026, 5, 17), _dt(2026, 4, 1)),
+        ("year", 5, _dt(2027, 3, 1), _dt(2025, 1, 1)),
+        ("day", 7, _dt(2026, 9, 20, 13, 40), _dt(2026, 9, 20)),
+    ],
+)
 def test_multi_unit_columns_start_on_round_values(
-    unit: str, step: int, first: datetime.datetime, start: datetime.datetime,
+    unit: str,
+    step: int,
+    first: datetime.datetime,
+    start: datetime.datetime,
 ) -> None:
     graph = GRAPH_FOR_UNIT[unit](_syslog_hours(first, 1), 10, step, first)
     assert graph.start_date == start
