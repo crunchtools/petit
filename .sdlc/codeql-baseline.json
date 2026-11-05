@@ -1,0 +1,7 @@
+[
+  {
+    "rule": "py/overly-permissive-file",
+    "path": "test/test_api.py",
+    "fingerprint": "cbf6d22c405058b:1"
+  }
+]
