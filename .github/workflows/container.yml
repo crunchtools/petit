@@ -43,7 +43,11 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            # `latest` is the newest STABLE RELEASE, not the newest build of the
+            # branch, which has its own tag above (constitution 1.33.0, RT#1559).
+            # A prerelease is not what `latest` means, so it is excluded by the
+            # hyphen: SemVer puts every prerelease identifier after one.
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-') }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -61,7 +65,7 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.QUAY_IMAGE }}:latest
+          image-ref: ${{ env.QUAY_IMAGE }}:${{ steps.meta.outputs.version }}
           format: "table"
           exit-code: "0"
           severity: "CRITICAL,HIGH"
@@ -98,7 +102,11 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            # `latest` is the newest STABLE RELEASE, not the newest build of the
+            # branch, which has its own tag above (constitution 1.33.0, RT#1559).
+            # A prerelease is not what `latest` means, so it is excluded by the
+            # hyphen: SemVer puts every prerelease identifier after one.
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-') }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
