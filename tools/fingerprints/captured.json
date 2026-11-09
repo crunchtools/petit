@@ -109,27 +109,27 @@
     "os": "Debian GNU/Linux 13 (trixie)",
     "captured": "2026-09-25"
   },
-  "fedora43": {
-    "family": "fedora",
-    "version": "43",
-    "role": "verify",
-    "corpus": "fedora44",
-    "image": "https://download.fedoraproject.org/pub/fedora/linux/releases/43/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-43-1.6.x86_64.qcow2",
-    "digest": "sha256:846574c8a97cd2d8dc1f231062d73107cc85cbbbda56335e264a46e3a6c8ab2f",
-    "kernel": "6.17.1-300.fc43.x86_64",
-    "os": "Fedora Linux 43 (Cloud Edition)",
-    "captured": "2026-09-25"
-  },
   "fedora44": {
     "family": "fedora",
     "version": "44",
-    "role": "corpus",
-    "corpus": "fedora44",
+    "role": "verify",
+    "corpus": "fedora45",
     "image": "https://download.fedoraproject.org/pub/fedora/linux/releases/44/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-44-1.7.x86_64.qcow2",
     "digest": "sha256:28680fe5b371a5a82ebf43a31926e086a168e59949d03969c5093e7071f90b7f",
     "kernel": "6.19.10-300.fc44.x86_64",
     "os": "Fedora Linux 44 (Cloud Edition)",
-    "captured": "2026-09-25"
+    "captured": "2026-11-09"
+  },
+  "fedora45": {
+    "family": "fedora",
+    "version": "45",
+    "role": "corpus",
+    "corpus": "fedora45",
+    "image": "https://download.fedoraproject.org/pub/fedora/linux/releases/45/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-45-1.4.x86_64.qcow2",
+    "digest": "sha256:50bdc5e70f6a24f540932d15411c1c6ae9fcfa40fb990d876d83c5cc823b2ad0",
+    "kernel": "7.2.11-300.fc45.x86_64",
+    "os": "Fedora Linux 45 (Cloud Edition)",
+    "captured": "2026-11-09"
   },
   "opensuse-leap16.0": {
     "family": "opensuse-leap",
