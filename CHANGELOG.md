@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Container base images pinned to `quay.io/hummingbird/python:3.14*` instead of
   `latest`, which moved to Python 3.15.0 on 2026-10-20 (crunchtools/constitution#66).
 
+## [4.10.3] - 2026-11-10
+
+### Fixed
+
+- Containerfile now installs dependencies from the committed, Dependabot-maintained
+  `uv.lock` instead of letting `pip install .` resolve them fresh. A new `lock` stage
+  exports the frozen lock to a requirements file with `uv export --frozen --no-dev
+  --no-emit-project`, and both `pip install` calls in the builder stage use `--no-deps`
+  so pip cannot silently re-resolve. Part of RT#1564.
+
 ## [4.10.2] - 2026-10-02
 
 ### Fixed
