@@ -4,7 +4,7 @@
 > **Ratified:** 2026-09-20
 > **Amended:** 2026-10-02
 > **Status:** Active
-> **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.31.0
+> **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.39.1
 > **Profile:** CLI Tool
 
 This file holds petit's own rules. Everything the fleet requires (license,
@@ -98,7 +98,7 @@ CLI second; never the reverse.
 
 Built on `quay.io/hummingbird/python:3.14-fips`/`-fips-builder`,
 multi-stage venv pattern. No extra system packages — pure stdlib. Published
-to `quay.io/crunchtools/petit` and `ghcr.io/crunchtools/petit`.
+to `quay.io/crunchtools/petit`.
 
 ## Test Suite
 

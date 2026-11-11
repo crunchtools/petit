@@ -1,120 +1,34 @@
-name: Container Build & Push
+name: Container
 
 on:
+  pull_request:
   push:
     branches: [master]
     tags: ["v*"]
-  pull_request:
-    branches: [master]
+  schedule:
+    - cron: "17 5 * * 1" # weekly, Monday 05:17 UTC: pick up base-image CVE fixes
   workflow_dispatch:
 
-env:
-  QUAY_IMAGE: quay.io/crunchtools/petit
-  GHCR_IMAGE: ghcr.io/crunchtools/petit
+permissions: {}
 
 jobs:
-  build-and-push-quay:
-    runs-on: ubuntu-latest
+  container:
+    uses: crunchtools/constitution/.github/workflows/container-release.yml@v1.39.1
     permissions:
       contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to Quay.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v4
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.QUAY_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            # `latest` is the newest STABLE RELEASE, not the newest build of the
-            # branch, which has its own tag above (constitution 1.33.0, RT#1559).
-            # A prerelease is not what `latest` means, so it is excluded by the
-            # hyphen: SemVer puts every prerelease identifier after one.
-            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-') }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./Containerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Run Trivy vulnerability scanner
-        continue-on-error: true
-        if: github.event_name != 'pull_request'
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.QUAY_IMAGE }}:${{ steps.meta.outputs.version }}
-          format: "table"
-          exit-code: "0"
-          severity: "CRITICAL,HIGH"
-
-  build-and-push-ghcr:
-    runs-on: ubuntu-latest
-    needs: build-and-push-quay
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ github.token }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.GHCR_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            # `latest` is the newest STABLE RELEASE, not the newest build of the
-            # branch, which has its own tag above (constitution 1.33.0, RT#1559).
-            # A prerelease is not what `latest` means, so it is excluded by the
-            # hyphen: SemVer puts every prerelease identifier after one.
-            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-') }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./Containerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      pull-requests: read
+    with:
+      image: quay.io/crunchtools/petit
+      default-branch: master
+      # petit is a CLI, not a server. Gate it the way production uses it: run
+      # the pushed digest over a real log and require the exact output the
+      # test suite recorded as known-good, not just that --version prints.
+      boot: command
+      boot-command: |
+        set -e
+        podman run --rm "$IMAGE" --version
+        out="$(podman run --rm -v "$PWD/test/data:/data:ro,Z" "$IMAGE" --hash /data/test01.log)"
+        [ "$out" = "$(cat test/output/test01-hash.output)" ]
+    secrets:
+      QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+      QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
