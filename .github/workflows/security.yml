@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: read
       issues: write
-    uses: crunchtools/constitution/.github/workflows/dependency-audit.yml@v1.39.1
+    uses: crunchtools/constitution/.github/workflows/dependency-audit.yml@v1.40.0
 
   codeql:
     name: CodeQL Analysis
