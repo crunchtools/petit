@@ -1,19 +1,30 @@
-# The repo's own checks, from python-sdlc at the release .pre-commit-config.yaml
-# pins -- the same image and the same commands the laptop runs, so a green push
-# predicts a green CI (constitution XII, v1.30.0).
+# The repo's own checks, from quay.io/crunchtools/sdlc -- the same image, the
+# same launcher and the same commands the laptop's hooks run, so a green push
+# predicts a green CI (constitution XII). Nothing here pins a release: the
+# image prints its own launcher, and both float on :latest.
 #
-# NOT every check on this pull request: Gourmand and Gatehouse run as their own
-# workflows, which is why `sdlc ci` leaves them out (XII: "CI runs push's checks
-# except Gourmand and Gatehouse, which CI runs through their own workflows").
+# The variable SDLC_IMAGE -- a repository's, or the organization's for the
+# whole fleet -- picks other tooling: `main` for what has merged to python-sdlc
+# and not been released, or a release such as `0.9.0` to hold one back. A
+# variable, which only an admin sets, rather than a line a pull request could
+# change in passing.
+#
+# Gourmand runs as its own job, not inside `sdlc ci`: XII has CI run push's
+# checks except Gourmand and Gatehouse, which run through their own workflows
+# (Gatehouse: gatehouse.yml).
 #
 # The job NAME `sdlc ci` is the required check in the org ruleset "Python SDLC
-# gates". Renaming the job stops it gating, silently.
+# gates", and the Gourmand job keeps the name its own workflow gave it. Renaming
+# a job stops it gating, silently.
+#
+# python-sdlc's examples/ci.yml, written by scripts/convert_repo.py. Copy it
+# unchanged.
 
 name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main, master]
   pull_request:
   workflow_dispatch:
 
@@ -25,20 +36,16 @@ jobs:
     name: sdlc ci
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      # The release is read from .pre-commit-config.yaml, so one line pins the
-      # launcher, the image and every tool in it, for the laptop and CI both.
+      # .sdlc/bin/sdlc is python-sdlc's bin/sdlc-bootstrap: it asks the image
+      # for its launcher and runs it, as the hooks do.
       - name: sdlc ci
-        run: |
-          set -eu
-          rev=$(awk '/repo: https:\/\/github.com\/crunchtools\/python-sdlc/ {f=1; next}
-                     f && /rev:/ {print $2; exit}' .pre-commit-config.yaml)
-          [ -n "$rev" ] || { echo "no python-sdlc rev in .pre-commit-config.yaml" >&2; exit 2; }
-          git clone -q --depth 1 --branch "$rev" https://github.com/crunchtools/python-sdlc "$RUNNER_TEMP/sdlc"
-          $RUNNER_TEMP/sdlc/bin/sdlc ci
+        env:
+          SDLC_IMAGE: ${{ vars.SDLC_IMAGE }}
+        run: .sdlc/bin/sdlc ci
 
   gourmand:
     name: Code Quality (Gourmand)
