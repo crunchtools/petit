@@ -34,7 +34,17 @@ permissions:
 jobs:
   sdlc:
     name: sdlc ci
-    runs-on: ubuntu-latest
+    # Same-repo PRs run on our cached runner, pushes and schedules on the uncached
+    # one; forks and Dependabot stay on GitHub's. An empty variable falls back to
+    # ubuntu-latest (crunchtools/trentina security.yml).
+    runs-on: >-
+      ${{ github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository
+          && github.event.pull_request.user.login != 'dependabot[bot]'
+          && (vars.CACHED_RUNNER_LABEL || 'ubuntu-latest')
+          || github.event_name != 'pull_request'
+          && (vars.UNCACHED_RUNNER_LABEL || 'ubuntu-latest')
+          || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
