@@ -111,3 +111,6 @@ warn_unused_configs = true
 # rather than scanning nothing and calling it a pass.
 skip = ["semgrep"]
 
+
+[tool.sdlc]
+repo-kinds = ["cli-tool"]
