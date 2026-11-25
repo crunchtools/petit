@@ -113,4 +113,28 @@ skip = ["semgrep"]
 
 
 [tool.sdlc]
+# Written by crunchtools/sdlc's scripts/convert_repo.py: moved from the workflows.
+publish = "pypi"
 repo-kinds = ["cli-tool"]
+# The root Containerfile is gated only when the container stack is named.
+stacks = ["python", "container"]
+
+[tool.sdlc.image]
+# Written by crunchtools/sdlc's scripts/convert_repo.py: moved from the workflows.
+image = "quay.io/crunchtools/petit"
+boot = "none"
+boot-none-reason = "a CLI, not a service: the ci check contract runs the built image's petit against the fixture (crunchtools/sdlc#118)"
+
+[tool.sdlc.ci]
+checks = ["petit-image", "contract"]
+
+# Was container.yml's boot-command: the image this change builds prints its
+# version and hashes the fixture log to the committed output.
+[tool.sdlc.ci.petit-image]
+kind = "image-build"
+tag = "localhost/petit:test"
+
+[tool.sdlc.ci.contract]
+kind = "command"
+image = "localhost/petit:test"
+argv = ["python3", "test/image/contract.py"]
