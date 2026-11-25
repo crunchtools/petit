@@ -101,19 +101,22 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      # The crunchtools-ci App's token, not a personal one: it has its own rate
+      # The Ashigaru App's token, not a personal one: it has its own rate
       # limit, so a throttled account can't stop this step.
       - name: Mint CI token
         id: ci-token
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ vars.CRUNCHTOOLS_CI_CLIENT_ID }}
-          private-key: ${{ secrets.CRUNCHTOOLS_CI_APP_KEY }}
+          client-id: ${{ vars.ASHIGARU_CLIENT_ID }}
+          private-key: ${{ secrets.ASHIGARU_APP_KEY }}
           owner: crunchtools
           repositories: petit
 
       # The org doesn't let github.token open PRs, so the bot pushes and opens
-      # them with the crunchtools-ci App token. That also starts CI on the PR.
+      # them with the Ashigaru App token. That also starts CI on the PR. The App
+      # has no Workflows permission, so the force push below is refused if
+      # master's workflows changed since the open PR's branch was cut: close
+      # that PR and delete the branch, and the next run opens a fresh one.
       - uses: actions/checkout@v7
         with:
           token: ${{ steps.ci-token.outputs.token }}
@@ -169,14 +172,14 @@ jobs:
           path: captures
           merge-multiple: true
 
-      # The crunchtools-ci App's token, not a personal one: it has its own rate
+      # The Ashigaru App's token, not a personal one: it has its own rate
       # limit, so a throttled account can't stop this step.
       - name: Mint CI token
         id: ci-token
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ vars.CRUNCHTOOLS_CI_CLIENT_ID }}
-          private-key: ${{ secrets.CRUNCHTOOLS_CI_APP_KEY }}
+          client-id: ${{ vars.ASHIGARU_CLIENT_ID }}
+          private-key: ${{ secrets.ASHIGARU_APP_KEY }}
           owner: crunchtools
           repositories: petit-captures
 
