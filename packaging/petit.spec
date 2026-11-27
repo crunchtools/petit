@@ -1,4 +1,4 @@
-# Packs a tree already staged by .github/workflows/packages.yml: petit in
+# Packs a tree already staged by packaging/Containerfile (and packages.yml): petit in
 # /usr/lib/petit with bytecode for Python 3.11-3.14, and the launcher.
 # Build with: rpmbuild -bb --define "pkg_version X.Y.Z" --define "stage DIR"
 

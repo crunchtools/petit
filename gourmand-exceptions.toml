@@ -181,6 +181,12 @@ path = "packaging/petit.sh"
 classification = "by_design"
 justification = "Not a helper script: it is the file the .rpm and .deb install as /usr/bin/petit (see packaging/petit.spec and .github/workflows/packages.yml). It picks the newest Python 3.11+ on the system and runs petit from /usr/lib/petit, which is what lets one package serve every target distro."
 
+[[exceptions]]
+check = "CH009-random_scripts"
+path = "packaging/smoke.sh"
+classification = "by_design"
+justification = "The package smoke test: packaging/Containerfile's smoke stage runs it in each target distro, for the pkg-* checks sdlc ci builds (pyproject.toml)."
+
 # Ruff is not missing; it moved. Gourmand's IF001 looks for a literal
 # `ruff-check` hook id, and under python-sdlc (constitution XII, v1.30.0) ruff
 # runs inside the `sdlc-commit` hook, configured by [tool.ruff] in

@@ -1,0 +1,89 @@
+# petit's native packages, built and smoke-tested in one Containerfile.
+#
+# The pull-request check (`sdlc ci`, [tool.sdlc.ci.pkg-*] in pyproject.toml)
+# builds the final stage once per target distro; a release builds the
+# `packages` stage and attaches its files (.github/workflows/packages.yml).
+#
+#   stage  the tree both packages carry: the wheel unpacked under
+#          /usr/lib/petit, bytecode for Python 3.11-3.14, the launcher
+#   rpm    noarch .rpm, on the oldest target so every newer rpm can read it
+#   deb    .deb
+#   smoke  install the package on ${SMOKE_IMAGE} and compare petit's output
+#          with test/output/ (packaging/smoke.sh); the build fails if not
+#
+# Build from the repo root:
+#   podman build -f packaging/Containerfile --target packages -o out .
+#   podman build -f packaging/Containerfile \
+#     --build-arg SMOKE_IMAGE=registry.access.redhat.com/ubi8/ubi \
+#     --build-arg PKG_KIND=rpm --build-arg VERSION=4.10.4 .
+
+ARG SMOKE_IMAGE=docker.io/library/debian:12
+ARG PKG_KIND=deb
+ARG VERSION=0.0.0
+
+FROM docker.io/library/python:3.14-slim AS stage
+# uv builds the wheel and fetches the other Pythons the bytecode is for.
+# The project is not installed: hatchling is the wheel's build backend only.
+RUN pip install --no-cache-dir uv==0.13.7
+WORKDIR /src
+COPY pyproject.toml README.md COPYING CHANGELOG.md AUTHORS ./
+COPY src/ ./src/
+COPY packaging/petit.sh ./packaging/petit.sh
+RUN uv build --wheel \
+ && mkdir -p stage/usr/lib/petit stage/usr/bin \
+ && python3 -m zipfile -e dist/*.whl stage/usr/lib/petit \
+ && install -m 0755 packaging/petit.sh stage/usr/bin/petit
+# Bytecode for every Python the launcher may pick; each version writes its
+# own tagged .pyc, so they sit side by side.
+RUN for v in 3.11 3.12 3.13 3.14; do \
+      uv python install "$v" \
+   && "$(uv python find "$v")" -m compileall -q --invalidation-mode unchecked-hash \
+        -s stage -p / stage/usr/lib/petit \
+   || exit 1; \
+    done
+
+FROM docker.io/library/almalinux:8 AS rpm
+ARG VERSION
+RUN dnf install -y rpm-build && dnf clean all
+WORKDIR /build
+COPY --from=stage /src/stage ./stage
+COPY COPYING README.md CHANGELOG.md ./
+COPY packaging/petit.spec ./
+RUN install -Dm0644 COPYING stage/usr/share/licenses/petit/COPYING \
+ && install -Dm0644 -t stage/usr/share/doc/petit README.md CHANGELOG.md \
+ && rpmbuild -bb --define "pkg_version $VERSION" --define "stage $PWD/stage" \
+      --define "_rpmdir $PWD/out" petit.spec \
+ && mkdir /pkg && mv out/noarch/*.rpm /pkg/ \
+ && rpm -qpi --requires /pkg/petit-*.rpm
+
+FROM docker.io/library/debian:12 AS deb
+ARG VERSION
+# du | cut below: fail the stage if du does.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+WORKDIR /build
+COPY --from=stage /src/stage ./pkg
+COPY COPYING README.md CHANGELOG.md ./
+COPY packaging/control.in ./
+RUN mkdir -p pkg/DEBIAN \
+ && install -Dm0644 COPYING pkg/usr/share/doc/petit/copyright \
+ && install -Dm0644 -t pkg/usr/share/doc/petit README.md CHANGELOG.md \
+ && sed "s/@VERSION@/$VERSION/" control.in > pkg/DEBIAN/control \
+ && echo "Installed-Size: $(du -sk pkg/usr | cut -f1)" >> pkg/DEBIAN/control \
+ && mkdir /pkg \
+ && dpkg-deb -Zxz --root-owner-group --build pkg "/pkg/petit_${VERSION}-1_all.deb" \
+ && dpkg-deb --info "/pkg/petit_${VERSION}-1_all.deb"
+
+# What a release attaches: `-o out` on this target writes the two files.
+FROM scratch AS packages
+COPY --from=rpm /pkg/ /
+COPY --from=deb /pkg/ /
+
+# The last stage, so a plain build is a smoke test.
+FROM ${SMOKE_IMAGE} AS smoke
+ARG PKG_KIND
+ARG VERSION
+COPY --from=packages / /pkg/
+COPY packaging/smoke.sh /smoke.sh
+COPY test/data/test01.log /t/data/test01.log
+COPY test/output/test01-hash.output test/output/test01-wordcount.output /t/output/
+RUN PKG_KIND="$PKG_KIND" VERSION="$VERSION" sh /smoke.sh

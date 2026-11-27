@@ -126,7 +126,21 @@ boot = "none"
 boot-none-reason = "a CLI, not a service: the ci check contract runs the built image's petit against the fixture (crunchtools/sdlc#118)"
 
 [tool.sdlc.ci]
-checks = ["petit-image", "contract"]
+# The pkg-* checks are the pull request half of packages.yml: each builds
+# packaging/Containerfile for one target distro, and fails the build if the
+# package will not install there or petit's output differs from test/output/.
+# They share one tag, so they are one lane and run in turn: the stage, rpm
+# and deb layers are built by the first and cached for the rest.
+checks = [
+    "petit-image", "contract",
+    "pkg-ubi8", "pkg-ubi9", "pkg-ubi10", "pkg-alma9", "pkg-centos10", "pkg-fedora", "pkg-al2023",
+    "pkg-bci15", "pkg-bci16", "pkg-debian12", "pkg-debian13", "pkg-ubuntu24", "pkg-ubuntu26",
+]
+
+# packaging/Containerfile is not the image this repo publishes, but it is
+# built on every pull request, so it is linted like the one that is.
+[tool.sdlc.ci.containerfile-lint]
+containerfiles = ["Containerfile", "packaging/Containerfile"]
 
 # Was container.yml's boot-command: the image this change builds prints its
 # version and hashes the fixture log to the committed output.
@@ -138,3 +152,81 @@ tag = "localhost/petit:test"
 kind = "command"
 image = "localhost/petit:test"
 argv = ["python3", "test/image/contract.py"]
+
+[tool.sdlc.ci.pkg-ubi8]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "registry.access.redhat.com/ubi8/ubi", PKG_KIND = "rpm", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-ubi9]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "registry.access.redhat.com/ubi9/ubi", PKG_KIND = "rpm", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-ubi10]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "registry.access.redhat.com/ubi10/ubi", PKG_KIND = "rpm", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-alma9]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "docker.io/library/almalinux:9", PKG_KIND = "rpm", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-centos10]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "quay.io/centos/centos:stream10", PKG_KIND = "rpm", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-fedora]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "docker.io/library/fedora:latest", PKG_KIND = "rpm", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-al2023]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "docker.io/library/amazonlinux:2023", PKG_KIND = "rpm", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-bci15]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "registry.suse.com/bci/bci-base:15.7", PKG_KIND = "rpm", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-bci16]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "registry.suse.com/bci/bci-base:16.0", PKG_KIND = "rpm", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-debian12]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "docker.io/library/debian:12", PKG_KIND = "deb", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-debian13]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "docker.io/library/debian:13", PKG_KIND = "deb", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-ubuntu24]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "docker.io/library/ubuntu:24.04", PKG_KIND = "deb", VERSION = "@project.version"}
+
+[tool.sdlc.ci.pkg-ubuntu26]
+kind = "image-build"
+containerfile = "packaging/Containerfile"
+tag = "localhost/petit-packages:test"
+build_args = {SMOKE_IMAGE = "docker.io/library/ubuntu:26.04", PKG_KIND = "deb", VERSION = "@project.version"}
