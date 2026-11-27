@@ -157,76 +157,76 @@ argv = ["python3", "test/image/contract.py"]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "registry.access.redhat.com/ubi8/ubi", PKG_KIND = "rpm", VERSION = "@project.version"}
+build_args = {TARGET = "ubi8", PKG_KIND = "rpm", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-ubi9]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "registry.access.redhat.com/ubi9/ubi", PKG_KIND = "rpm", VERSION = "@project.version"}
+build_args = {TARGET = "ubi9", PKG_KIND = "rpm", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-ubi10]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "registry.access.redhat.com/ubi10/ubi", PKG_KIND = "rpm", VERSION = "@project.version"}
+build_args = {TARGET = "ubi10", PKG_KIND = "rpm", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-alma9]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "docker.io/library/almalinux:9", PKG_KIND = "rpm", VERSION = "@project.version"}
+build_args = {TARGET = "alma9", PKG_KIND = "rpm", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-centos10]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "quay.io/centos/centos:stream10", PKG_KIND = "rpm", VERSION = "@project.version"}
+build_args = {TARGET = "centos10", PKG_KIND = "rpm", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-fedora]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "docker.io/library/fedora:latest", PKG_KIND = "rpm", VERSION = "@project.version"}
+build_args = {TARGET = "fedora", PKG_KIND = "rpm", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-al2023]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "docker.io/library/amazonlinux:2023", PKG_KIND = "rpm", VERSION = "@project.version"}
+build_args = {TARGET = "al2023", PKG_KIND = "rpm", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-bci15]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "registry.suse.com/bci/bci-base:15.7", PKG_KIND = "rpm", VERSION = "@project.version"}
+build_args = {TARGET = "bci15", PKG_KIND = "rpm", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-bci16]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "registry.suse.com/bci/bci-base:16.0", PKG_KIND = "rpm", VERSION = "@project.version"}
+build_args = {TARGET = "bci16", PKG_KIND = "rpm", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-debian12]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "docker.io/library/debian:12", PKG_KIND = "deb", VERSION = "@project.version"}
+build_args = {TARGET = "debian12", PKG_KIND = "deb", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-debian13]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "docker.io/library/debian:13", PKG_KIND = "deb", VERSION = "@project.version"}
+build_args = {TARGET = "debian13", PKG_KIND = "deb", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-ubuntu24]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "docker.io/library/ubuntu:24.04", PKG_KIND = "deb", VERSION = "@project.version"}
+build_args = {TARGET = "ubuntu24", PKG_KIND = "deb", VERSION = "@project.version"}
 
 [tool.sdlc.ci.pkg-ubuntu26]
 kind = "image-build"
 containerfile = "packaging/Containerfile"
 tag = "localhost/petit-packages:test"
-build_args = {SMOKE_IMAGE = "docker.io/library/ubuntu:26.04", PKG_KIND = "deb", VERSION = "@project.version"}
+build_args = {TARGET = "ubuntu26", PKG_KIND = "deb", VERSION = "@project.version"}

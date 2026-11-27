@@ -8,20 +8,22 @@
 #          /usr/lib/petit, bytecode for Python 3.11-3.14, the launcher
 #   rpm    noarch .rpm, on the oldest target so every newer rpm can read it
 #   deb    .deb
-#   smoke  install the package on ${SMOKE_IMAGE} and compare petit's output
+#   smoke  install the package on smoke-${TARGET} and compare petit's output
 #          with test/output/ (packaging/smoke.sh); the build fails if not
 #
 # Build from the repo root:
 #   podman build -f packaging/Containerfile --target packages -o out .
 #   podman build -f packaging/Containerfile \
-#     --build-arg SMOKE_IMAGE=registry.access.redhat.com/ubi8/ubi \
+#     --build-arg TARGET=ubi8 \
 #     --build-arg PKG_KIND=rpm --build-arg VERSION=4.10.4 .
 
-ARG SMOKE_IMAGE=docker.io/library/debian:12
+# Every image is pinned by digest (constitution S2); Renovate moves the pins.
+# TARGET names the smoke root below that a check installs on.
+ARG TARGET=debian12
 ARG PKG_KIND=deb
 ARG VERSION=0.0.0
 
-FROM docker.io/library/python:3.14-slim AS stage
+FROM docker.io/library/python:3.14-slim@sha256:22eafb370920ad8b429e0aec3fff433e0669968519f5d60469d83729c138b28b AS stage
 # uv builds the wheel and fetches the other Pythons the bytecode is for.
 # The project is not installed: hatchling is the wheel's build backend only.
 RUN pip install --no-cache-dir uv==0.13.7
@@ -42,7 +44,7 @@ RUN for v in 3.11 3.12 3.13 3.14; do \
    || exit 1; \
     done
 
-FROM docker.io/library/almalinux:8 AS rpm
+FROM docker.io/library/almalinux:8@sha256:768bedc30fe0a536adb0a65d2eddb7caad364e514fbddd0ae9e026975f590342 AS rpm
 ARG VERSION
 RUN dnf install -y rpm-build && dnf clean all
 WORKDIR /build
@@ -56,7 +58,7 @@ RUN install -Dm0644 COPYING stage/usr/share/licenses/petit/COPYING \
  && mkdir /pkg && mv out/noarch/*.rpm /pkg/ \
  && rpm -qpi --requires /pkg/petit-*.rpm
 
-FROM docker.io/library/debian:12 AS deb
+FROM docker.io/library/debian:12@sha256:1d04200c2ece1d4d75a2a6f8e11ebce7d86a2ae28b34bb2c9cbb3ee9f4953e75 AS deb
 ARG VERSION
 # du | cut below: fail the stage if du does.
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -78,8 +80,23 @@ FROM scratch AS packages
 COPY --from=rpm /pkg/ /
 COPY --from=deb /pkg/ /
 
+# The smoke roots, one per target distro; a build pulls only the one it uses.
+FROM registry.access.redhat.com/ubi8/ubi@sha256:432e88be04b5561187a01fe33429cd2ce7a8408a00f000d8136df368dcab306f AS smoke-ubi8
+FROM registry.access.redhat.com/ubi9/ubi@sha256:6636b79fba9e5044360366f189333c30b5ce528efd92c40c68b074592b971fcd AS smoke-ubi9
+FROM registry.access.redhat.com/ubi10/ubi@sha256:87ceab8634a53a36c75a8ba7282f09f11c46ab3e8906db6c6d2b3cd2a7dc4f4e AS smoke-ubi10
+FROM docker.io/library/almalinux:9@sha256:02df05719ef287ebd0df0a1eedb9172a00bd70703aed7b25660e426b8e0d6047 AS smoke-alma9
+FROM quay.io/centos/centos:stream10@sha256:b042adb7687b322f80765277b552dcdd9c5f98bd3ca64e2f46175d2ae55fc82b AS smoke-centos10
+FROM registry.fedoraproject.org/fedora:44@sha256:d5c6ac6d50556aa47f5b39f08964cdf1a57d182e1d21c172368ba9aed188b0e7 AS smoke-fedora
+FROM docker.io/library/amazonlinux:2023@sha256:edd3297df7d444ab9a7896b763d5305d4bab57d2fb3943e831c1713b97d32d9d AS smoke-al2023
+FROM registry.suse.com/bci/bci-base:15.7@sha256:8cd100ae2ec5ab23d6ec7aa1c0fe2dc30ca852c609406097797c9d298b7decdd AS smoke-bci15
+FROM registry.suse.com/bci/bci-base:16.0@sha256:e38d5d697377ab01a348c64a2a9e324d2f64e65fda31fa1a2db54bc99c6ff03c AS smoke-bci16
+FROM docker.io/library/debian:12@sha256:1d04200c2ece1d4d75a2a6f8e11ebce7d86a2ae28b34bb2c9cbb3ee9f4953e75 AS smoke-debian12
+FROM docker.io/library/debian:13@sha256:3cda3ca472ce45507a5109c6a3907093e24d9ae67d55954c9a07a45665dafba2 AS smoke-debian13
+FROM docker.io/library/ubuntu:24.04@sha256:562111b88caa79c71391c0c4d3c2114a7d5c35915c20561fd893cb1e07929e6b AS smoke-ubuntu24
+FROM docker.io/library/ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db AS smoke-ubuntu26
+
 # The last stage, so a plain build is a smoke test.
-FROM ${SMOKE_IMAGE} AS smoke
+FROM smoke-${TARGET} AS smoke
 ARG PKG_KIND
 ARG VERSION
 COPY --from=packages / /pkg/
