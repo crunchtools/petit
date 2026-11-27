@@ -318,20 +318,45 @@ journal. Every corpus comes from the same procedure on a clean guest.
   releases are supported.
 - `captured.json` is the lock file. It records the image, digest, kernel and
   date behind each committed capture.
-- `.github/workflows/fingerprints.yml` runs weekly and on demand. It
-  captures every supported release and opens a PR only when something
-  changed:
+- A maintainer runs it by hand, monthly and when a release ships, on a host
+  with `/dev/kvm` and QEMU: no fleet CI job has KVM together with the App
+  token a PR needs, so the weekly workflow was retired (a1790).
+
+      uv run python tools/fingerprints/refresh.py check --output plan.json
+      jq -r '.capture[].id' plan.json | while read -r p; do
+          uv run python tools/fingerprints/refresh.py capture "$p" --out "captures/$p"
+      done
+      uv run python tools/fingerprints/refresh.py propose captures --summary body.md
+
+  `propose` rewrites the corpora and says whether anything changed. When it
+  did, commit exactly what it touches and open the PR with `body.md`:
+
+      git checkout -B fingerprints/update
+      git add src/petit/data/fingerprints test/data/verify tools/fingerprints/captured.json
+      git commit -m "feat: refresh reboot fingerprint corpora (#37)"
+      git push --force origin fingerprints/update
+      gh pr create --base master --head fingerprints/update \
+          --title "feat: refresh reboot fingerprint corpora" --body-file body.md
+
+  It changes something only for:
   - a new release, which gets a corpus plus a second, independent reboot
     in `test/data/verify/<corpus>.fp/`;
   - a release whose fresh reboot no longer names its own corpus first, or
     scores below an identity of 0.5, which gets a new corpus;
   - a release past its end of life, which is retired.
 
-  Every run also pushes each capture to
+  Push each run's captures to
   [crunchtools/petit-captures](https://github.com/crunchtools/petit-captures),
-  under `<date>/<run>/<release>/`. That includes the whole journal of both boots
-  (`raw/<a|b>/*.log.xz`), scrubbed like the corpora. It lives in its own
-  repo, so it is never part of a petit clone or package.
+  under `<date>/<run>/<release>/`, one directory per run so a second run on
+  the same day adds rather than overwrites. That includes the whole journal
+  of both boots (`raw/<a|b>/*.log.xz`), scrubbed like the corpora. It lives
+  in its own repo, so it is never part of a petit clone or package.
+
+      dest="$(date -u +%F)/$(date -u +%H%M%S)"
+      mkdir -p "petit-captures/$dest" && cp -r captures/. "petit-captures/$dest/"
+      git -C petit-captures add "$dest"
+      git -C petit-captures commit -m "captures: $dest"
+      git -C petit-captures push
 
 To capture by hand from a local qcow2 guest image:
 

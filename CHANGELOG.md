@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- The weekly `fingerprints.yml` workflow (a1790). No fleet CI job has KVM and
+  the App token together, so the corpora are refreshed by hand with
+  `tools/fingerprints/refresh.py` (docs/internal/drivers.md).
+- `packages.yml` no longer runs on pull requests (a1790). `sdlc ci` builds
+  `packaging/Containerfile` for each of the 13 target distros instead (the
+  `pkg-*` checks), installing the .rpm or .deb and checking petit's output;
+  the workflow keeps only the release half, which attaches the packages.
+
 ### Changed
 - Gatehouse triage receives the review job's result (`review_result`), so a PR whose review died before posting anything is held instead of passing.
 

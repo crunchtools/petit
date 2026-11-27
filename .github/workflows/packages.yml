@@ -4,10 +4,12 @@ name: Native Packages
 # distro it targets, and on a release attaches them to it. The signed dnf
 # and apt repositories are built from those release assets by
 # crunchtools/packages.
+#
+# Pull requests are not built here: the same build and smoke test run in
+# `sdlc ci` (packaging/Containerfile, the pkg-* checks in pyproject.toml).
+# Keep the stage, rpm, deb and smoke steps below in step with it.
 
 on:
-  pull_request:
-    branches: [master]
   release:
     types: [published]
   workflow_dispatch:
